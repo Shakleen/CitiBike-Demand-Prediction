@@ -1,6 +1,16 @@
 # CitiBike-Demand-Prediction
 An End-to-End Machine Learning project where I predict demand of bikes at citibike stations at hourly level.
 
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue)
+![Apache Spark](https://img.shields.io/badge/Apache%20Spark-Cluster%20Computing-orange)
+![Delta Lake](https://img.shields.io/badge/Delta%20Lake-Data%20Lake-blue)
+![MLflow](https://img.shields.io/badge/MLflow-Tracking%20Experiment-blue)
+![Flask](https://img.shields.io/badge/Flask-Web%20Framework-lightgrey)
+![PyTest](https://img.shields.io/badge/PyTest-Testing-green)
+
+
+
 ## Objective
 Accurately predict the demand of bikes on 
 1. A specific date and time of day and
