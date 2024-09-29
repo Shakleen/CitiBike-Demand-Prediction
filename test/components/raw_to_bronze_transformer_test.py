@@ -17,6 +17,7 @@ def dataframe_mock():
     df.union.return_value = df
     df.write.return_value = df
     df.save.return_value = df
+    df.select.return_value = df
     return df
 
 
@@ -52,3 +53,11 @@ def test_read_raw_delta(spark_mock: SparkSession, transformer: RawToBronzeTransf
     spark_mock.read.assert_called_once()
     spark_mock.read.format.assert_called_once_with("delta")
     spark_mock.read.format.load.assert_called_once()
+
+def test_create_station_dataframe(dataframe_mock, transformer: RawToBronzeTransformer):
+    output = transformer.create_station_dataframe(dataframe_mock)
+
+    assert output == dataframe_mock
+    dataframe_mock.withColumnRenamed.assert_called()
+    dataframe_mock.select.assert_called()
+    dataframe_mock.union.assert_called()
