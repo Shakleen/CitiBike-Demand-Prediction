@@ -1,11 +1,11 @@
 import os
 import pyspark
+from pyspark.sql.dataframe import DataFrame
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
     StructField,
     StructType,
     IntegerType,
-    TimestampType,
     StringType,
     FloatType,
 )
@@ -17,6 +17,7 @@ from pyspark.sql.functions import (
 )
 from delta import configure_spark_with_delta_pip
 from dataclasses import dataclass
+from typing import Tuple
 
 from src.logger import logging
 
@@ -69,84 +70,102 @@ class DataIngestorConfig:
 
 
 class DataIngestor:
-    def __init__(self, spark: SparkSession = None):
+    def __init__(self, spark: SparkSession):
         self.config = DataIngestorConfig()
+        self.spark = spark
 
-        if not spark:
-            builder = (
-                pyspark.sql.SparkSession.builder.appName("csv_to_raw")
-                .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-                .config(
-                    "spark.sql.catalog.spark_catalog",
-                    "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-                )
+    def read_csv(self, csv_dir: str, schema: StructType) -> DataFrame:
+        return self.spark.read.csv(csv_dir, schema=schema, header=True)
+
+    def read_pre_and_post_csv_dir(self) -> Tuple[DataFrame, DataFrame]:
+        logging.info("Reading pre-2020 and post-2020 data")
+        pre_2020_df = self.read_csv(
+            self.config.pre_2020_csv_dir,
+            self.config.pre_2020_schema,
+        )
+        post_2020_df = self.read_csv(
+            self.config.post_2020_csv_dir,
+            self.config.post_2020_schema,
+        )
+        return pre_2020_df, post_2020_df
+
+    def fix_column_names_and_dtypes(
+        self,
+        pre_2020_df: DataFrame,
+        post_2020_df: DataFrame,
+    ) -> Tuple[DataFrame, DataFrame]:
+        logging.info("Fixing column names and data types")
+        df_1 = (
+            pre_2020_df.withColumnRenamed("starttime", "start_time")
+            .withColumnRenamed("stoptime", "end_time")
+            .withColumnRenamed("start station name", "start_station_name")
+            .withColumnRenamed("start station latitude", "start_station_latitude")
+            .withColumnRenamed("start station longitude", "start_station_longitude")
+            .withColumnRenamed("end station name", "end_station_name")
+            .withColumnRenamed("end station latitude", "end_station_latitude")
+            .withColumnRenamed("end station longitude", "end_station_longitude")
+            .withColumn("start_station_id", col("start station id").cast(IntegerType()))
+            .withColumn("end_station_id", col("end station id").cast(IntegerType()))
+            .withColumn("member", when(col("usertype") == "Subscriber", 1).otherwise(0))
+            .drop(
+                "tripduration",
+                "bikeid",
+                "birth year",
+                "gender",
+                "start station id",
+                "end station id",
+                "usertype",
             )
+        )
+        df_2 = (
+            post_2020_df.withColumnRenamed("started_at", "start_time")
+            .withColumnRenamed("ended_at", "end_time")
+            .withColumnRenamed("start_lat", "start_station_latitude")
+            .withColumnRenamed("start_lng", "start_station_longitude")
+            .withColumnRenamed("end_lat", "end_station_latitude")
+            .withColumnRenamed("end_lng", "end_station_longitude")
+            .withColumn("start_station_id", col("start_station_id").cast(IntegerType()))
+            .withColumn("end_station_id", col("end_station_id").cast(IntegerType()))
+            .withColumn(
+                "member", when(col("member_casual") == "casual", 0).otherwise(1)
+            )
+            .drop("ride_id", "rideable_type", "member_casual")
+        )
+        return df_1, df_2
 
-            self.spark = configure_spark_with_delta_pip(builder).getOrCreate()
-        else:
-            self.spark = spark
-        
+    def combine_dataframes(self, df_1: DataFrame, df_2: DataFrame) -> DataFrame:
+        logging.info("Combining pre-2020 and post-2020 dataframes")
+        df = df_1.union(df_2)
+        df = df.withColumn("row_number", monotonically_increasing_id())
+        df = df.withColumn("file_path", input_file_name())
+        return df
 
-    def read_csv(self, spark: SparkSession, csv_dir: str, schema: StructType):
-        return spark.read.csv(csv_dir, schema=schema, header=True)
+    def ingest(self):
+        logging.info("Initiated data ingestion from CSV files")
+        pre_2020_df, post_2020_df = self.read_pre_and_post_csv_dir()
+        df_1, df_2 = self.fix_column_names_and_dtypes(pre_2020_df, post_2020_df)
+        df = self.combine_dataframes(df_1, df_2)
+        df.write.save(
+            path=self.config.raw_data_save_dir,
+            format="delta",
+            mode="overwrite",
+        )
+        logging.info(
+            "Finished ingesting csv data. "
+            + f"Saved as delta to {self.config.raw_data_save_dir}"
+        )
 
-    # def ingest(self):
-    #     logging.info("Initiated data ingestion from CSV files")
 
-    #     pre_2020_df = self.read_csv(
-    #         self.config.pre_2020_csv_dir,
-    #         self.config.pre_2020_schema,
-    #     )
-    #     logging.info("Read pre-2020 data")
+if __name__ == "__main__":
+    builder = (
+        pyspark.sql.SparkSession.builder.appName("csv_to_raw")
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        )
+    )
 
-    #     post_2020_df = self.read_csv(
-    #         self.config.post_2020_csv_dir,
-    #         self.config.post_2020_schema,
-    #     )
-    #     logging.info("Read post-2020 data")
-
-    #     df_1 = (
-    #         pre_2020_df.withColumnRenamed("starttime", "start_time")
-    #         .withColumnRenamed("stoptime", "end_time")
-    #         .withColumnRenamed("start station name", "start_station_name")
-    #         .withColumnRenamed("start station latitude", "start_station_latitude")
-    #         .withColumnRenamed("start station longitude", "start_station_longitude")
-    #         .withColumnRenamed("end station name", "end_station_name")
-    #         .withColumnRenamed("end station latitude", "end_station_latitude")
-    #         .withColumnRenamed("end station longitude", "end_station_longitude")
-    #         .withColumn("start_station_id", col("start station id").cast(IntegerType()))
-    #         .withColumn("end_station_id", col("end station id").cast(IntegerType()))
-    #         .withColumn("member", when(col("usertype") == "Subscriber", 1).otherwise(0))
-    #         .drop(
-    #             "tripduration",
-    #             "bikeid",
-    #             "birth year",
-    #             "gender",
-    #             "start station id",
-    #             "end station id",
-    #             "usertype",
-    #         )
-    #     )
-    #     df_2 = (
-    #         post_2020_df.withColumnRenamed("started_at", "start_time")
-    #         .withColumnRenamed("ended_at", "end_time")
-    #         .withColumnRenamed("start_lat", "start_station_latitude")
-    #         .withColumnRenamed("start_lng", "start_station_longitude")
-    #         .withColumnRenamed("end_lat", "end_station_latitude")
-    #         .withColumnRenamed("end_lng", "end_station_longitude")
-    #         .withColumn("start_station_id", col("start_station_id").cast(IntegerType()))
-    #         .withColumn("end_station_id", col("end_station_id").cast(IntegerType()))
-    #         .withColumn(
-    #             "member", when(col("member_casual") == "casual", 0).otherwise(1)
-    #         )
-    #         .drop("ride_id", "rideable_type", "member_casual")
-    #     )
-    #     df = df_1.union(df_2)
-    #     df = df.withColumn("row_number", monotonically_increasing_id())
-    #     df = df.withColumn("file_path", input_file_name())
-
-    #     df.write.save(
-    #         path=self.config.raw_data_save_dir,
-    #         format="delta",
-    #         mode="overwrite",
-    #     )
+    spark = configure_spark_with_delta_pip(builder).getOrCreate()
+    ingestor = DataIngestor(spark)
+    ingestor.ingest()
