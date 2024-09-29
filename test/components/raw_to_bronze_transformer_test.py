@@ -41,6 +41,7 @@ def test_config():
     assert hasattr(config, "root_delta_path")
     assert hasattr(config, "raw_data_path")
     assert hasattr(config, "bronze_data_path")
+    assert hasattr(config, "station_data_path")
 
 
 def test_init(spark_mock: SparkSession, transformer: RawToBronzeTransformer):
@@ -54,6 +55,7 @@ def test_read_raw_delta(spark_mock: SparkSession, transformer: RawToBronzeTransf
     spark_mock.read.format.assert_called_once_with("delta")
     spark_mock.read.format.load.assert_called_once()
 
+
 def test_create_station_dataframe(dataframe_mock, transformer: RawToBronzeTransformer):
     output = transformer.create_station_dataframe(dataframe_mock)
 
@@ -61,3 +63,16 @@ def test_create_station_dataframe(dataframe_mock, transformer: RawToBronzeTransf
     dataframe_mock.withColumnRenamed.assert_called()
     dataframe_mock.select.assert_called()
     dataframe_mock.union.assert_called()
+
+
+def test_write_delta(dataframe_mock, transformer: RawToBronzeTransformer):
+    write_mock = Mock()
+    dataframe_mock.write = write_mock
+
+    transformer.write_delta(dataframe_mock, transformer.config.station_data_path)
+
+    write_mock.save.assert_called_once_with(
+        path=transformer.config.station_data_path,
+        format="delta",
+        mode="overwrite",
+    )

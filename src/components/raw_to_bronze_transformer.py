@@ -12,6 +12,7 @@ class RawToBronzeTransformerConfig:
     root_delta_path: str = os.path.join("Data", "delta")
     raw_data_path: str = os.path.join(root_delta_path, "raw")
     bronze_data_path: str = os.path.join(root_delta_path, "bronze")
+    station_data_path: str = os.path.join(root_delta_path, "station")
 
 
 class RawToBronzeTransformer:
@@ -40,3 +41,10 @@ class RawToBronzeTransformer:
         )
 
         return s1.union(s2)
+
+    def write_delta(self, df: DataFrame, path: str):
+        df.write.save(
+            path=path,
+            format="delta",
+            mode="overwrite",
+        )
