@@ -1,0 +1,152 @@
+import os
+import pyspark
+from pyspark.sql import SparkSession
+from pyspark.sql.types import (
+    StructField,
+    StructType,
+    IntegerType,
+    TimestampType,
+    StringType,
+    FloatType,
+)
+from pyspark.sql.functions import (
+    monotonically_increasing_id,
+    input_file_name,
+    col,
+    when,
+)
+from delta import configure_spark_with_delta_pip
+from dataclasses import dataclass
+
+from src.logger import logging
+
+
+@dataclass
+class DataIngestorConfig:
+    root_data_path: str = "Data"
+    root_csv_path: str = os.path.join(root_data_path, "CSVs")
+    pre_2020_csv_dir: str = os.path.join(root_csv_path, "pre_2020")
+    pre_2020_schema = StructType(
+        [
+            StructField("tripduration", IntegerType(), False),
+            StructField("starttime", StringType(), False),
+            StructField("stoptime", StringType(), False),
+            StructField("start station id", FloatType(), False),
+            StructField("start station name", StringType(), False),
+            StructField("start station latitude", FloatType(), False),
+            StructField("start station longitude", FloatType(), False),
+            StructField("end station id", FloatType(), False),
+            StructField("end station name", StringType(), False),
+            StructField("end station latitude", FloatType(), False),
+            StructField("end station longitude", FloatType(), False),
+            StructField("bikeid", IntegerType(), False),
+            StructField("usertype", StringType(), False),
+            StructField("birth year", IntegerType(), False),
+            StructField("gender", IntegerType(), False),
+        ]
+    )
+
+    post_2020_csv_dir: str = os.path.join(root_csv_path, "post_2020")
+    post_2020_schema = StructType(
+        [
+            StructField("ride_id", StringType(), False),
+            StructField("rideable_type", StringType(), False),
+            StructField("started_at", StringType(), False),
+            StructField("ended_at", StringType(), False),
+            StructField("start_station_name", StringType(), False),
+            StructField("start_station_id", FloatType(), False),
+            StructField("end_station_name", StringType(), False),
+            StructField("end_station_id", FloatType(), False),
+            StructField("start_lat", FloatType(), False),
+            StructField("start_lng", FloatType(), False),
+            StructField("end_lat", FloatType(), False),
+            StructField("end_lng", FloatType(), False),
+            StructField("member_casual", StringType(), False),
+        ]
+    )
+
+    raw_data_save_dir: str = os.path.join(root_data_path, "delta", "raw")
+
+
+class DataIngestor:
+    def __init__(self, spark: SparkSession = None):
+        self.config = DataIngestorConfig()
+
+        if not spark:
+            builder = (
+                pyspark.sql.SparkSession.builder.appName("csv_to_raw")
+                .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+                .config(
+                    "spark.sql.catalog.spark_catalog",
+                    "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+                )
+            )
+
+            self.spark = configure_spark_with_delta_pip(builder).getOrCreate()
+        else:
+            self.spark = spark
+        
+
+    def read_csv(self, spark: SparkSession, csv_dir: str, schema: StructType):
+        return spark.read.csv(csv_dir, schema=schema, header=True)
+
+    # def ingest(self):
+    #     logging.info("Initiated data ingestion from CSV files")
+
+    #     pre_2020_df = self.read_csv(
+    #         self.config.pre_2020_csv_dir,
+    #         self.config.pre_2020_schema,
+    #     )
+    #     logging.info("Read pre-2020 data")
+
+    #     post_2020_df = self.read_csv(
+    #         self.config.post_2020_csv_dir,
+    #         self.config.post_2020_schema,
+    #     )
+    #     logging.info("Read post-2020 data")
+
+    #     df_1 = (
+    #         pre_2020_df.withColumnRenamed("starttime", "start_time")
+    #         .withColumnRenamed("stoptime", "end_time")
+    #         .withColumnRenamed("start station name", "start_station_name")
+    #         .withColumnRenamed("start station latitude", "start_station_latitude")
+    #         .withColumnRenamed("start station longitude", "start_station_longitude")
+    #         .withColumnRenamed("end station name", "end_station_name")
+    #         .withColumnRenamed("end station latitude", "end_station_latitude")
+    #         .withColumnRenamed("end station longitude", "end_station_longitude")
+    #         .withColumn("start_station_id", col("start station id").cast(IntegerType()))
+    #         .withColumn("end_station_id", col("end station id").cast(IntegerType()))
+    #         .withColumn("member", when(col("usertype") == "Subscriber", 1).otherwise(0))
+    #         .drop(
+    #             "tripduration",
+    #             "bikeid",
+    #             "birth year",
+    #             "gender",
+    #             "start station id",
+    #             "end station id",
+    #             "usertype",
+    #         )
+    #     )
+    #     df_2 = (
+    #         post_2020_df.withColumnRenamed("started_at", "start_time")
+    #         .withColumnRenamed("ended_at", "end_time")
+    #         .withColumnRenamed("start_lat", "start_station_latitude")
+    #         .withColumnRenamed("start_lng", "start_station_longitude")
+    #         .withColumnRenamed("end_lat", "end_station_latitude")
+    #         .withColumnRenamed("end_lng", "end_station_longitude")
+    #         .withColumn("start_station_id", col("start_station_id").cast(IntegerType()))
+    #         .withColumn("end_station_id", col("end_station_id").cast(IntegerType()))
+    #         .withColumn(
+    #             "member", when(col("member_casual") == "casual", 0).otherwise(1)
+    #         )
+    #         .drop("ride_id", "rideable_type", "member_casual")
+    #     )
+    #     df = df_1.union(df_2)
+    #     df = df.withColumn("row_number", monotonically_increasing_id())
+    #     df = df.withColumn("file_path", input_file_name())
+
+    #     df.write.save(
+    #         path=self.config.raw_data_save_dir,
+    #         format="delta",
+    #         mode="overwrite",
+    #     )
