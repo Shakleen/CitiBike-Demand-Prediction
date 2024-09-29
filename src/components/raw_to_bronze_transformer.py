@@ -2,6 +2,16 @@ import os
 from dataclasses import dataclass
 from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
+from pyspark.sql.functions import (
+    col,
+    count,
+    regexp_extract,
+    to_timestamp,
+    when,
+    add_months,
+    year,
+    month,
+)
 
 if __name__ == "__main__":
     from src.logger import logging
@@ -47,4 +57,10 @@ class RawToBronzeTransformer:
             path=path,
             format="delta",
             mode="overwrite",
+        )
+
+    def create_file_name_column(self, df: DataFrame) -> DataFrame:
+        regex_str = "[^\\/]+$"
+        return df.withColumn(
+            "file_name", regexp_extract(col("file_path"), regex_str, 0)
         )

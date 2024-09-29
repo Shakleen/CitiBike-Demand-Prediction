@@ -76,3 +76,13 @@ def test_write_delta(dataframe_mock, transformer: RawToBronzeTransformer):
         format="delta",
         mode="overwrite",
     )
+
+def test_create_file_name_column(mocker, dataframe_mock, transformer: RawToBronzeTransformer):
+    reg_exp_mock = Mock()
+    mocker.patch("src.components.raw_to_bronze_transformer.col", return_value=Mock())
+    mocker.patch("src.components.raw_to_bronze_transformer.regexp_extract", return_value=reg_exp_mock)
+    
+    output = transformer.create_file_name_column(dataframe_mock)
+    
+    dataframe_mock.withColumn.assert_called_once_with("file_name", reg_exp_mock)
+    assert output == dataframe_mock
