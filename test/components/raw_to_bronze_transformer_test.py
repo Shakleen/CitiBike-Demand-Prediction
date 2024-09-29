@@ -23,8 +23,9 @@ def dataframe_mock():
 @pytest.fixture(scope="session")
 def spark_mock(dataframe_mock):
     spark = Mock(SparkSession)
-    spark.read = Mock()
-    spark.read.csv = dataframe_mock
+    spark.read = spark
+    spark.read.format = spark
+    spark.read.format.load = spark
     return spark
 
 
@@ -41,6 +42,13 @@ def test_config():
     assert hasattr(config, "bronze_data_path")
 
 
-def test_init(spark_mock, transformer: RawToBronzeTransformer):
+def test_init(spark_mock: SparkSession, transformer: RawToBronzeTransformer):
     assert transformer.config == RawToBronzeTransformerConfig()
     assert transformer.spark is spark_mock
+
+
+def test_read_raw_delta(spark_mock: SparkSession, transformer: RawToBronzeTransformer):
+    _ = transformer.read_raw_delta()
+    spark_mock.read.assert_called_once()
+    spark_mock.read.format.assert_called_once_with("delta")
+    spark_mock.read.format.load.assert_called_once()

@@ -1,8 +1,10 @@
 import os
 from dataclasses import dataclass
 from pyspark.sql import SparkSession
+from pyspark.sql.dataframe import DataFrame
 
-from src.logger import logging
+if __name__ == "__main__":
+    from src.logger import logging
 
 @dataclass
 class RawToBronzeTransformerConfig:
@@ -16,3 +18,5 @@ class RawToBronzeTransformer:
         self.config = RawToBronzeTransformerConfig()
         self.spark = spark
     
+    def read_raw_delta(self) -> DataFrame:
+        return self.spark.read.format("delta").load(self.config.raw_data_path)
