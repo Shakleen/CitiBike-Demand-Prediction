@@ -89,13 +89,42 @@ class DataIngestor:
         )
         return pre_2020_df, post_2020_df
 
-    def fix_column_names_and_dtypes(
-        self,
-        pre_2020_df: DataFrame,
-        post_2020_df: DataFrame,
-    ) -> Tuple[DataFrame, DataFrame]:
-        logging.info("Fixing column names and data types")
-        df_1 = (
+    def write_dataframe(self, df: DataFrame):
+        df.write.save(
+            path=self.config.raw_data_save_dir,
+            format="delta",
+            mode="overwrite",
+        )
+        logging.info(
+            "Finished ingesting csv data. "
+            + f"Saved as delta to {self.config.raw_data_save_dir}"
+        )
+
+    def combine_dataframes(self, df_1: DataFrame, df_2: DataFrame) -> DataFrame:
+        logging.info("Combining pre-2020 and post-2020 dataframes")
+        df = df_1.union(df_2)
+        df = df.withColumn("row_number", monotonically_increasing_id())
+        df = df.withColumn("file_path", input_file_name())
+        return df
+
+    def standardize_columns_for_post2020(self, post_2020_df: DataFrame):
+        return (
+            post_2020_df.withColumnRenamed("started_at", "start_time")
+            .withColumnRenamed("ended_at", "end_time")
+            .withColumnRenamed("start_lat", "start_station_latitude")
+            .withColumnRenamed("start_lng", "start_station_longitude")
+            .withColumnRenamed("end_lat", "end_station_latitude")
+            .withColumnRenamed("end_lng", "end_station_longitude")
+            .withColumn("start_station_id", col("start_station_id").cast(IntegerType()))
+            .withColumn("end_station_id", col("end_station_id").cast(IntegerType()))
+            .withColumn(
+                "member", when(col("member_casual") == "casual", 0).otherwise(1)
+            )
+            .drop("ride_id", "rideable_type", "member_casual")
+        )
+
+    def standardize_columns_for_pre2020(self, pre_2020_df: DataFrame):
+        return (
             pre_2020_df.withColumnRenamed("starttime", "start_time")
             .withColumnRenamed("stoptime", "end_time")
             .withColumnRenamed("start station name", "start_station_name")
@@ -117,43 +146,16 @@ class DataIngestor:
                 "usertype",
             )
         )
-        df_2 = (
-            post_2020_df.withColumnRenamed("started_at", "start_time")
-            .withColumnRenamed("ended_at", "end_time")
-            .withColumnRenamed("start_lat", "start_station_latitude")
-            .withColumnRenamed("start_lng", "start_station_longitude")
-            .withColumnRenamed("end_lat", "end_station_latitude")
-            .withColumnRenamed("end_lng", "end_station_longitude")
-            .withColumn("start_station_id", col("start_station_id").cast(IntegerType()))
-            .withColumn("end_station_id", col("end_station_id").cast(IntegerType()))
-            .withColumn(
-                "member", when(col("member_casual") == "casual", 0).otherwise(1)
-            )
-            .drop("ride_id", "rideable_type", "member_casual")
-        )
-        return df_1, df_2
-
-    def combine_dataframes(self, df_1: DataFrame, df_2: DataFrame) -> DataFrame:
-        logging.info("Combining pre-2020 and post-2020 dataframes")
-        df = df_1.union(df_2)
-        df = df.withColumn("row_number", monotonically_increasing_id())
-        df = df.withColumn("file_path", input_file_name())
-        return df
 
     def ingest(self):
         logging.info("Initiated data ingestion from CSV files")
         pre_2020_df, post_2020_df = self.read_pre_and_post_csv_dir()
-        df_1, df_2 = self.fix_column_names_and_dtypes(pre_2020_df, post_2020_df)
-        df = self.combine_dataframes(df_1, df_2)
-        df.write.save(
-            path=self.config.raw_data_save_dir,
-            format="delta",
-            mode="overwrite",
-        )
-        logging.info(
-            "Finished ingesting csv data. "
-            + f"Saved as delta to {self.config.raw_data_save_dir}"
-        )
+
+        pre_2020_df = self.standardize_columns_for_pre2020(pre_2020_df)
+        post_2020_df = self.standardize_columns_for_post2020(post_2020_df)
+
+        df = self.combine_dataframes(pre_2020_df, post_2020_df)
+        self.write_dataframe(df)
 
 
 if __name__ == "__main__":
