@@ -1,6 +1,12 @@
 # CitiBike-Demand-Prediction
 An End-to-End Machine Learning project where I predict demand of bikes at citibike stations at hourly level.
 
+## Business Objective
+
+The success of the bike-sharing business hinges on ensuring that users can readily access bikes when needed and find available docking stations at the end of their rides. Consequently, there is a dual demand for both bike availability and empty docking stations. This project aims to forecast these demands on an hourly basis for each station in New York City. Accurate demand predictions will enhance the coordination of bike redistribution efforts, ultimately leading to increased profitability.
+
+## Technical Details
+
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![Apache Spark](https://img.shields.io/badge/Apache%20Spark-Cluster%20Computing-orange)
@@ -9,21 +15,14 @@ An End-to-End Machine Learning project where I predict demand of bikes at citibi
 ![Flask](https://img.shields.io/badge/Flask-Web%20Framework-lightgrey)
 ![PyTest](https://img.shields.io/badge/PyTest-Testing-green)
 
-
-
-## Objective
-Accurately predict the demand of bikes on 
-1. A specific date and time of day and
-1. A specific bike station
-
-Here, the demand is defined as the following
-1. **Bike Demand**: Number of bikes that will be taken from this station to go to another station
-1. **Docking Demand**: Number of bikes that will come to this station to dock.
-
-## Technologies Used
+### Technologies Used
 1. **PySpark** and **DeltaLake** to manage data ingestion and transformation
 1. **MLFlow** for model development
 1. **Flask** to create front end
 1. **Git** and **GitHub** for project management
 1. **GitHub Actions** for CI/CD
 1. **PyTest** for writing tests
+
+### Medallion Data Architecture
+
+![Medallion Data Architecture](Diagrams/Medallion_Architecture.jpeg)
