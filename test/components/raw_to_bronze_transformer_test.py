@@ -49,6 +49,7 @@ def spark():
         .config("spark.executor.instances", "1")
         .config("spark.sql.shuffle.partitions", "1")
         .config("spark.driver.bindAddress", "127.0.0.1")
+        .config("spark.sql.legacy.timeParserPolicy", "LEGACY")
         .getOrCreate()
     )
     yield spark
@@ -350,15 +351,31 @@ def test_get_dataframe_timeformat_type_3(
     assert output.count() == 2
 
 
+@pytest.mark.parametrize(
+    ("time_format", "count"),
+    [
+        ("yyyy-MM-dd HH:mm:ss", 2),
+        ("M/d/yyyy H:mm", 4),
+        ("M/d/yyyy HH:mm:ss", 2),
+    ],
+)
 def test_set_timestamp_for_format(
     dataframe_2: DataFrame,
     transformer: RawToBronzeTransformer,
+    time_format: str,
+    count: int,
 ):
-    output = transformer.set_timestamp_for_format(dataframe_2, "yyyy-MM-dd HH:mm:ss")
+    output = transformer.set_timestamp_for_format(dataframe_2, time_format)
 
     assert isinstance(output, DataFrame)
     assert output.schema[0] == StructField("start_time", TimestampType(), True)
     assert output.schema[1] == StructField("end_time", TimestampType(), True)
+    assert (
+        output.filter(col("start_time").isNotNull())
+        .filter(col("end_time").isNotNull())
+        .count()
+        == count
+    )
 
 
 def test_set_timestamp_datatype(
@@ -370,3 +387,9 @@ def test_set_timestamp_datatype(
     assert isinstance(output, DataFrame)
     assert output.schema[0] == StructField("start_time", TimestampType(), True)
     assert output.schema[1] == StructField("end_time", TimestampType(), True)
+    assert (
+        output.filter(col("start_time").isNotNull())
+        .filter(col("end_time").isNotNull())
+        .count()
+        == dataframe_2.count()
+    )
