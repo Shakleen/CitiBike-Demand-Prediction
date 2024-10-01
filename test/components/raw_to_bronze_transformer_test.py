@@ -393,3 +393,13 @@ def test_set_timestamp_datatype(
         .count()
         == dataframe_2.count()
     )
+
+
+def test_get_station_dataframe(
+    dataframe_2: DataFrame,
+    transformer: RawToBronzeTransformer,
+):
+    output = transformer.get_station_dataframe(dataframe_2)
+
+    assert isinstance(output, DataFrame)
+    assert output.columns == ["id", "name", "latitude", "longitude"]

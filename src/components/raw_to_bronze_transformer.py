@@ -109,9 +109,7 @@ class RawToBronzeTransformer:
 
         return df_3
 
-    def set_timestamp_for_format(
-        self, df: DataFrame, time_format: str
-    ) -> DataFrame:
+    def set_timestamp_for_format(self, df: DataFrame, time_format: str) -> DataFrame:
         return df.withColumn(
             "start_time", to_timestamp("start_time", time_format)
         ).withColumn("end_time", to_timestamp("end_time", time_format))
@@ -127,6 +125,23 @@ class RawToBronzeTransformer:
         df_3 = self.set_timestamp_for_format(df_3, "M/d/yyyy HH:mm:ss")
 
         return df_1.union(df_2).union(df_3)
+
+    def get_station_dataframe(self, df: DataFrame) -> DataFrame:
+        return (
+            df.withColumnRenamed("start_station_id", "id")
+            .withColumnRenamed("start_station_name", "name")
+            .withColumnRenamed("start_station_latitude", "latitude")
+            .withColumnRenamed("start_station_longitude", "longitude")
+            .select("id", "name", "latitude", "longitude")
+        ).union(
+            (
+                df.withColumnRenamed("end_station_id", "id")
+                .withColumnRenamed("end_station_name", "name")
+                .withColumnRenamed("end_station_latitude", "latitude")
+                .withColumnRenamed("end_station_longitude", "longitude")
+                .select("id", "name", "latitude", "longitude")
+            )
+        )
 
     def transform(self):
         logging.info("Reading raw delta table")
