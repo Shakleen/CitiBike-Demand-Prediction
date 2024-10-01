@@ -167,6 +167,49 @@ class RawToBronzeTransformer:
 
         return df_filled
 
+    def fill_in_using_station_id(self, df: DataFrame) -> DataFrame:
+        # Create a mapping DataFrame with distinct non-null id and corresponding non-null values
+        mapping_df = (
+            df.filter(df["id"].isNotNull())
+            .select("id", "name", "latitude", "longitude")
+            .distinct()
+        )
+        mapping_df = (
+            mapping_df.withColumnRenamed("name", "mapped_name")
+            .withColumnRenamed("latitude", "mapped_latitude")
+            .withColumnRenamed("longitude", "mapped_longitude")
+        )
+
+        # Show the mapping DataFrame
+        mapping_df.show()
+
+        # Join the original DataFrame with the mapping DataFrame on the id column
+        df_filled = df.alias("df1").join(mapping_df.alias("df2"), on="id", how="left")
+
+        # Use coalesce to fill null values in the name, latitude, and longitude columns
+        df_filled = (
+            df_filled.withColumn(
+                "name", coalesce(df_filled["df1.name"], df_filled["mapped_name"])
+            )
+            .withColumn(
+                "latitude",
+                coalesce(df_filled["df1.latitude"], df_filled["mapped_latitude"]),
+            )
+            .withColumn(
+                "longitude",
+                coalesce(df_filled["df1.longitude"], df_filled["mapped_longitude"]),
+            )
+        )
+
+        # Drop the extra columns from the join
+        return (
+            df_filled.drop("mapped_name")
+            .drop("mapped_latitude")
+            .drop("mapped_longitude")
+            .dropDuplicates()
+            .dropna(how="any")
+        )
+
     def transform(self):
         logging.info("Reading raw delta table")
         df = self.read_raw_delta()
