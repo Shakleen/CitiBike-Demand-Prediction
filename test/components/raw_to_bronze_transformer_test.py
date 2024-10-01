@@ -414,3 +414,14 @@ def test_drup_duplicates_and_all_nulls(
 
     assert isinstance(output, DataFrame)
     assert before - after == 3
+
+def test_fill_in_station_id_using_name(
+    dataframe_2: DataFrame,
+    transformer: RawToBronzeTransformer,
+):
+    output = transformer.get_station_dataframe(dataframe_2)
+    output = transformer.drup_duplicates_and_all_nulls(output)
+    output = transformer.fill_in_station_id_using_name(output)
+
+    assert isinstance(output, DataFrame)
+    assert output.filter(col("id").isNull()).count() is 0

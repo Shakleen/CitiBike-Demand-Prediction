@@ -11,6 +11,7 @@ from pyspark.sql.functions import (
     add_months,
     year,
     month,
+    coalesce,
 )
 
 if __name__ == "__main__":
@@ -145,6 +146,26 @@ class RawToBronzeTransformer:
 
     def drup_duplicates_and_all_nulls(self, df: DataFrame) -> DataFrame:
         return df.dropDuplicates().dropna(how="all")
+
+    def fill_in_station_id_using_name(self, df: DataFrame) -> DataFrame:
+        # Create a mapping DataFrame with distinct non-null name and id pairs
+        mapping_df = df.filter(df["id"].isNotNull()).select("name", "id").distinct()
+
+        # Rename the id column in the mapping DataFrame to avoid conflicts
+        mapping_df = mapping_df.withColumnRenamed("id", "mapped_id")
+
+        # Join the original DataFrame with the mapping DataFrame
+        df_filled = df.alias("df1").join(mapping_df.alias("df2"), on="name", how="left")
+
+        # Use coalesce to fill null values in the id column
+        df_filled = df_filled.withColumn(
+            "id", coalesce(df_filled["df1.id"], df_filled["df2.mapped_id"])
+        )
+
+        # Drop the extra columns from the join
+        df_filled = df_filled.drop("mapped_id")
+
+        return df_filled
 
     def transform(self):
         logging.info("Reading raw delta table")
