@@ -67,6 +67,19 @@ class DataIngestorConfig:
     )
 
     raw_data_save_dir: str = os.path.join(root_data_path, "delta", "raw")
+    column_order = [
+        "start_time",
+        "end_time",
+        "start_station_name",
+        "start_station_latitude",
+        "start_station_longitude",
+        "end_station_name",
+        "end_station_latitude",
+        "end_station_longitude",
+        "start_station_id",
+        "end_station_id",
+        "member",
+    ]
 
 
 class DataIngestor:
@@ -121,6 +134,7 @@ class DataIngestor:
                 "member", when(col("member_casual") == "casual", 0).otherwise(1)
             )
             .drop("ride_id", "rideable_type", "member_casual")
+            .select(self.config.column_order)
         )
 
     def standardize_columns_for_pre2020(self, pre_2020_df: DataFrame):
@@ -145,6 +159,7 @@ class DataIngestor:
                 "end station id",
                 "usertype",
             )
+            .select(self.config.column_order)
         )
 
     def ingest(self):

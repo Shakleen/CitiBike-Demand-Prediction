@@ -214,6 +214,7 @@ def test_config():
     assert hasattr(config, "post_2020_csv_dir")
     assert hasattr(config, "post_2020_schema")
     assert hasattr(config, "raw_data_save_dir")
+    assert hasattr(config, "column_order")
 
 
 def test_init(spark: SparkSession, ingestor: DataIngestor):
@@ -246,50 +247,18 @@ def test_standardize_columns_pre2020(
     dataframe_pre2020: DataFrame,
     ingestor: DataIngestor,
 ):
-    expected_columns = set(
-        [
-            "start_time",
-            "end_time",
-            "start_station_name",
-            "start_station_latitude",
-            "start_station_longitude",
-            "end_station_name",
-            "end_station_latitude",
-            "end_station_longitude",
-            "start_station_id",
-            "end_station_id",
-            "member",
-        ]
-    )
-
     df = ingestor.standardize_columns_for_pre2020(dataframe_pre2020)
 
-    assert set(df.columns) == expected_columns
+    assert df.columns == ingestor.config.column_order
 
 
 def test_standardize_columns_post2020(
     dataframe_post2020: DataFrame,
     ingestor: DataIngestor,
 ):
-    expected_columns = set(
-        [
-            "start_time",
-            "end_time",
-            "start_station_name",
-            "start_station_id",
-            "end_station_name",
-            "end_station_id",
-            "start_station_latitude",
-            "start_station_longitude",
-            "end_station_latitude",
-            "end_station_longitude",
-            "member",
-        ]
-    )
-
     df = ingestor.standardize_columns_for_post2020(dataframe_post2020)
 
-    assert set(df.columns) == expected_columns
+    assert df.columns == ingestor.config.column_order
 
 
 def test_combine_dataframes(
