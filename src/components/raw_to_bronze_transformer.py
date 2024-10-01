@@ -143,6 +143,9 @@ class RawToBronzeTransformer:
             )
         )
 
+    def drup_duplicates_and_all_nulls(self, df: DataFrame) -> DataFrame:
+        return df.dropDuplicates().dropna(how="all")
+
     def transform(self):
         logging.info("Reading raw delta table")
         df = self.read_raw_delta()

@@ -18,27 +18,6 @@ from src.components.raw_to_bronze_transformer import (
     RawToBronzeTransformer,
 )
 
-schema = StructType(
-    StructType(
-        [
-            StructField("start_time", StringType(), True),
-            StructField("end_time", StringType(), True),
-            StructField("start_station_name", StringType(), True),
-            StructField("start_station_latitude", FloatType(), True),
-            StructField("start_station_longitude", FloatType(), True),
-            StructField("end_station_name", StringType(), True),
-            StructField("end_station_latitude", FloatType(), True),
-            StructField("end_station_longitude", FloatType(), True),
-            StructField("start_station_id", IntegerType(), True),
-            StructField("end_station_id", IntegerType(), True),
-            StructField("member", IntegerType(), True),
-            StructField("row_number", LongType(), True),
-            StructField("file_path", StringType(), True),
-            StructField("file_name", StringType(), True),
-        ]
-    )
-)
-
 
 @pytest.fixture(scope="session")
 def spark():
@@ -74,7 +53,7 @@ def dataframe_2(spark: SparkSession):
                 "Allen St & Rivington St",
                 40.72019577026367,
                 -73.98997497558594,
-                5406,
+                None,
                 5414,
                 1,
                 1666447310848,
@@ -87,7 +66,7 @@ def dataframe_2(spark: SparkSession):
                 "Clark St & Henry St",
                 40.697601318359375,
                 -73.99344635009766,
-                "Columbia Heights & Cranberry St",
+                None,
                 40.70037841796875,
                 -73.9954833984375,
                 4789,
@@ -101,8 +80,8 @@ def dataframe_2(spark: SparkSession):
                 "1/1/2015 0:01",
                 "1/1/2015 0:24",
                 "Rivington St & Ridge St",
-                40.718502044677734,
-                -73.9832992553711,
+                None,
+                None,
                 "Allen St & Rivington St",
                 40.72019577026367,
                 -73.98997497558594,
@@ -116,7 +95,7 @@ def dataframe_2(spark: SparkSession):
             [
                 "1/1/2015 0:02",
                 "1/1/2015 0:08",
-                "Clark St & Henry St",
+                None,
                 40.697601318359375,
                 -73.99344635009766,
                 "Columbia Heights & Cranberry St",
@@ -135,11 +114,11 @@ def dataframe_2(spark: SparkSession):
                 "Rivington St & Ridge St",
                 40.718502044677734,
                 -73.9832992553711,
-                "Allen St & Rivington St",
-                40.72019577026367,
-                -73.98997497558594,
+                None,
+                None,
+                None,
                 5406,
-                5414,
+                None,
                 1,
                 1666447310848,
                 "file:///media/ishrak/New%20Volume/Studies/Projects/CitiBike-Demand-Prediction/Data/CSVs/post_2020/202101-citibike-tripdata_1.csv",
@@ -152,8 +131,8 @@ def dataframe_2(spark: SparkSession):
                 40.697601318359375,
                 -73.99344635009766,
                 "Columbia Heights & Cranberry St",
-                40.70037841796875,
-                -73.9954833984375,
+                None,
+                None,
                 4789,
                 4829,
                 1,
@@ -162,7 +141,26 @@ def dataframe_2(spark: SparkSession):
                 "201409-citibike-tripdata_1.csv",
             ],
         ],
-        schema=schema,
+        schema=StructType(
+            StructType(
+                [
+                    StructField("start_time", StringType(), True),
+                    StructField("end_time", StringType(), True),
+                    StructField("start_station_name", StringType(), True),
+                    StructField("start_station_latitude", FloatType(), True),
+                    StructField("start_station_longitude", FloatType(), True),
+                    StructField("end_station_name", StringType(), True),
+                    StructField("end_station_latitude", FloatType(), True),
+                    StructField("end_station_longitude", FloatType(), True),
+                    StructField("start_station_id", IntegerType(), True),
+                    StructField("end_station_id", IntegerType(), True),
+                    StructField("member", IntegerType(), True),
+                    StructField("row_number", LongType(), True),
+                    StructField("file_path", StringType(), True),
+                    StructField("file_name", StringType(), True),
+                ]
+            )
+        ),
     )
 
 
@@ -403,3 +401,16 @@ def test_get_station_dataframe(
 
     assert isinstance(output, DataFrame)
     assert output.columns == ["id", "name", "latitude", "longitude"]
+
+
+def test_drup_duplicates_and_all_nulls(
+    dataframe_2: DataFrame,
+    transformer: RawToBronzeTransformer,
+):
+    output = transformer.get_station_dataframe(dataframe_2)
+    before = output.count()
+    output = transformer.drup_duplicates_and_all_nulls(output)
+    after = output.count()
+
+    assert isinstance(output, DataFrame)
+    assert before - after == 3
