@@ -4,14 +4,13 @@ from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.functions import (
     col,
-    count,
     regexp_extract,
     to_timestamp,
-    when,
-    add_months,
-    year,
-    month,
     coalesce,
+    when,
+    month,
+    year,
+    add_months,
 )
 from typing import Tuple
 
@@ -117,6 +116,7 @@ class RawToBronzeTransformer:
     def set_timestamp_datatype(self, df: DataFrame) -> DataFrame:
         df_1 = self.get_dataframe_timeformat_type_1(df)
         df_1 = self.set_timestamp_for_format(df_1, "yyyy-MM-dd HH:mm:ss")
+        df_1 = self.add_one_month_for_202108(df_1)
 
         df_2 = self.get_dataframe_timeformat_type_2(df)
         df_2 = self.set_timestamp_for_format(df_2, "M/d/yyyy H:mm")
@@ -125,6 +125,28 @@ class RawToBronzeTransformer:
         df_3 = self.set_timestamp_for_format(df_3, "M/d/yyyy HH:mm:ss")
 
         return df_1.union(df_2).union(df_3)
+
+    def add_one_month_for_202108(self, df: DataFrame) -> DataFrame:
+        return (
+            df.withColumn(
+                "start_time",
+                when(
+                    (col("file_name").startswith("202108"))
+                    & (year("start_time") == 2021)
+                    & (month("start_time") == 7),
+                    add_months(col("start_time"), 1),
+                ).otherwise(col("start_time")),
+            )
+            .withColumn(
+                "end_time",
+                when(
+                    (col("file_name").startswith("202108"))
+                    & (year("end_time") == 2021)
+                    & (month("end_time") == 7),
+                    add_months(col("end_time"), 1),
+                ).otherwise(col("end_time")),
+            )
+        )
 
     def get_station_dataframe(self, df: DataFrame) -> DataFrame:
         return (
@@ -252,10 +274,10 @@ class RawToBronzeTransformer:
         df = self.set_timestamp_datatype(df)
 
         station_df, row_to_station_df, df = self.split_station_and_time(df)
+
+        logging.info("Saving as deltalakes")
         self.write_delta(station_df, self.config.station_data_path)
         self.write_delta(row_to_station_df, self.config.row_to_station_data_path)
-
-        logging.info("Writing to bronze delta table")
         self.write_delta(df)
 
 
