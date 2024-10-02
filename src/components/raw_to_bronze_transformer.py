@@ -13,6 +13,7 @@ from pyspark.sql.functions import (
     month,
     coalesce,
 )
+from typing import Tuple
 
 if __name__ == "__main__":
     from src.logger import logging
@@ -23,6 +24,8 @@ class RawToBronzeTransformerConfig:
     root_delta_path: str = os.path.join("Data", "delta")
     raw_data_path: str = os.path.join(root_delta_path, "raw")
     bronze_data_path: str = os.path.join(root_delta_path, "bronze")
+    station_data_path: str = os.path.join(root_delta_path, "station")
+    row_to_station_data_path: str = os.path.join(root_delta_path, "row_to_station")
 
 
 class RawToBronzeTransformer:
@@ -33,12 +36,8 @@ class RawToBronzeTransformer:
     def read_raw_delta(self) -> DataFrame:
         return self.spark.read.format("delta").load(self.config.raw_data_path)
 
-    def write_delta(self, df: DataFrame):
-        df.write.save(
-            path=self.config.bronze_data_path,
-            format="delta",
-            mode="overwrite",
-        )
+    def write_delta(self, df: DataFrame, path: str):
+        df.write.save(path=path, format="delta", mode="overwrite")
 
     def create_file_name_column(self, df: DataFrame) -> DataFrame:
         regex_str = "[^\\/]+$"
@@ -144,7 +143,7 @@ class RawToBronzeTransformer:
             )
         )
 
-    def drup_duplicates_and_all_nulls(self, df: DataFrame) -> DataFrame:
+    def drop_duplicates_and_all_nulls(self, df: DataFrame) -> DataFrame:
         return df.dropDuplicates().dropna(how="all")
 
     def fill_in_station_id_using_name(self, df: DataFrame) -> DataFrame:
@@ -210,13 +209,51 @@ class RawToBronzeTransformer:
             .dropna(how="any")
         )
 
+    def split_station_and_time(
+        self, df: DataFrame
+    ) -> Tuple[DataFrame, DataFrame, DataFrame]:
+        # Separating station Data
+        station_df = self.get_station_dataframe(df)
+        station_df = self.drop_duplicates_and_all_nulls(station_df)
+        station_df = self.fill_in_station_id_using_name(station_df)
+        station_df = self.fill_in_using_station_id(station_df)
+
+        # Dropping rows with null station ids
+        df = df.dropna(subset=["start_station_id", "end_station_id"], how="any")
+
+        # Mapping df to station ids
+        row_to_station_df = df.select(
+            "row_number", "start_station_id", "end_station_id"
+        )
+
+        # Dropping station related columns
+        df = df.drop(
+            "start_station_id",
+            "start_station_name",
+            "start_station_latitude",
+            "start_station_longitude",
+            "end_station_id",
+            "end_station_name",
+            "end_station_latitude",
+            "end_station_longitude",
+            "member",
+            "file_path",
+            "file_name",
+        )
+
+        return (station_df, row_to_station_df, df)
+
     def transform(self):
         logging.info("Reading raw delta table")
         df = self.read_raw_delta()
         logging.info("Creating file name column")
         df = self.create_file_name_column(df)
 
-        self.set_timestamp_datatype(df)
+        df = self.set_timestamp_datatype(df)
+
+        station_df, row_to_station_df, df = self.split_station_and_time(df)
+        self.write_delta(station_df, self.config.station_data_path)
+        self.write_delta(row_to_station_df, self.config.row_to_station_data_path)
 
         logging.info("Writing to bronze delta table")
         self.write_delta(df)

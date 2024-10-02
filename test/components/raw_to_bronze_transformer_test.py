@@ -56,7 +56,7 @@ def dataframe_2(spark: SparkSession):
                 None,
                 5414,
                 1,
-                1666447310848,
+                1,
                 "file:///media/ishrak/New%20Volume/Studies/Projects/CitiBike-Demand-Prediction/Data/CSVs/post_2020/202101-citibike-tripdata_1.csv",
                 "202101-citibike-tripdata_1.csv",
             ],
@@ -72,7 +72,7 @@ def dataframe_2(spark: SparkSession):
                 4789,
                 4829,
                 1,
-                1666447310849,
+                2,
                 "file:///media/ishrak/New%20Volume/Studies/Projects/CitiBike-Demand-Prediction/Data/CSVs/post_2020/202101-citibike-tripdata_1.csv",
                 "202101-citibike-tripdata_1.csv",
             ],
@@ -88,7 +88,7 @@ def dataframe_2(spark: SparkSession):
                 5406,
                 5414,
                 1,
-                1666447310848,
+                3,
                 "file:///media/ishrak/New%20Volume/Studies/Projects/CitiBike-Demand-Prediction/Data/CSVs/post_2020/202101-citibike-tripdata_1.csv",
                 "201501-citibike-tripdata_1.csv",
             ],
@@ -104,7 +104,7 @@ def dataframe_2(spark: SparkSession):
                 4789,
                 4829,
                 1,
-                1666447310849,
+                4,
                 "file:///media/ishrak/New%20Volume/Studies/Projects/CitiBike-Demand-Prediction/Data/CSVs/post_2020/202101-citibike-tripdata_1.csv",
                 "201501-citibike-tripdata_1.csv",
             ],
@@ -120,7 +120,7 @@ def dataframe_2(spark: SparkSession):
                 5406,
                 None,
                 1,
-                1666447310848,
+                5,
                 "file:///media/ishrak/New%20Volume/Studies/Projects/CitiBike-Demand-Prediction/Data/CSVs/post_2020/202101-citibike-tripdata_1.csv",
                 "201409-citibike-tripdata_1.csv",
             ],
@@ -136,7 +136,7 @@ def dataframe_2(spark: SparkSession):
                 4789,
                 4829,
                 1,
-                1666447310849,
+                6,
                 "file:///media/ishrak/New%20Volume/Studies/Projects/CitiBike-Demand-Prediction/Data/CSVs/post_2020/202101-citibike-tripdata_1.csv",
                 "201409-citibike-tripdata_1.csv",
             ],
@@ -272,6 +272,8 @@ def test_config():
     assert hasattr(config, "root_delta_path")
     assert hasattr(config, "raw_data_path")
     assert hasattr(config, "bronze_data_path")
+    assert hasattr(config, "station_data_path")
+    assert hasattr(config, "row_to_station_data_path")
 
 
 def test_init(transformer: RawToBronzeTransformer, spark: SparkSession):
@@ -303,10 +305,12 @@ def test_write_delta():
     spark_mock = Mock(SparkSession)
     transformer = RawToBronzeTransformer(spark_mock)
 
-    transformer.write_delta(dataframe)
+    transformer.write_delta(dataframe, transformer.config.bronze_data_path)
 
     dataframe.write.save.assert_called_once_with(
-        path=transformer.config.bronze_data_path, format="delta", mode="overwrite"
+        path=transformer.config.bronze_data_path,
+        format="delta",
+        mode="overwrite",
     )
 
 
@@ -409,7 +413,7 @@ def test_drup_duplicates_and_all_nulls(
 ):
     output = transformer.get_station_dataframe(dataframe_2)
     before = output.count()
-    output = transformer.drup_duplicates_and_all_nulls(output)
+    output = transformer.drop_duplicates_and_all_nulls(output)
     after = output.count()
 
     assert isinstance(output, DataFrame)
@@ -421,7 +425,7 @@ def test_fill_in_station_id_using_name(
     transformer: RawToBronzeTransformer,
 ):
     output = transformer.get_station_dataframe(dataframe_2)
-    output = transformer.drup_duplicates_and_all_nulls(output)
+    output = transformer.drop_duplicates_and_all_nulls(output)
     output = transformer.fill_in_station_id_using_name(output)
 
     assert isinstance(output, DataFrame)
@@ -433,7 +437,7 @@ def test_fill_in_using_station_id(
     transformer: RawToBronzeTransformer,
 ):
     output = transformer.get_station_dataframe(dataframe_2)
-    output = transformer.drup_duplicates_and_all_nulls(output)
+    output = transformer.drop_duplicates_and_all_nulls(output)
     output = transformer.fill_in_station_id_using_name(output)
     output = transformer.fill_in_using_station_id(output)
 
@@ -444,3 +448,21 @@ def test_fill_in_using_station_id(
         ).count()
         is 0
     )
+
+
+def test_split_station_and_time(
+    dataframe_2: DataFrame,
+    transformer: RawToBronzeTransformer,
+):
+    station_df, row_to_station_df, df = transformer.split_station_and_time(dataframe_2)
+
+    assert isinstance(station_df, DataFrame)
+    assert isinstance(row_to_station_df, DataFrame)
+    assert isinstance(df, DataFrame)
+    assert set(station_df.columns) == {"id", "name", "latitude", "longitude"}
+    assert set(df.columns) == {"start_time", "end_time", "row_number"}
+    assert set(row_to_station_df.columns) == {
+        "row_number",
+        "start_station_id",
+        "end_station_id",
+    }
