@@ -209,7 +209,7 @@ class RawToBronzeTransformer:
         logging.info("Saving as deltalakes")
         self.write_delta(station_df, self.config.station_data_path)
         self.write_delta(row_to_station_df, self.config.row_to_station_data_path)
-        self.write_delta(df)
+        self.write_delta(df, self.config.bronze_data_path)
 
 
 if __name__ == "__main__":
