@@ -383,3 +383,54 @@ def test_holiday_thanksgiving(
     assert (
         output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == expected
     )
+
+
+def test_add_station_coordinates(
+    transformer: BronzeToSilverTransformer,
+    spark: SparkSession,
+):
+    station_df = spark.createDataFrame(
+        data=[
+            [1, "W 52 St & 11 Ave", 40.76727294921875, -73.99392700195312],
+            [2, "Franklin St & W Broadway", 40.7191162109375, -74.00666809082031],
+            [3, "St James Pl & Pearl St", 40.71117401123047, -74.00016784667969],
+            [4, "Atlantic Ave & Fort Greene Pl", 40.6838264465332, -73.97632598876953],
+            [5, "W 17 St & 8 Ave", 40.74177551269531, -74.00149536132812],
+        ],
+        schema=T.StructType(
+            [
+                T.StructField("id", T.IntegerType(), True),
+                T.StructField("name", T.StringType(), True),
+                T.StructField("latitude", T.FloatType(), True),
+                T.StructField("longitude", T.FloatType(), True),
+            ]
+        ),
+    )
+
+    df = spark.createDataFrame(
+        data=[
+            [1, 100, 100, 2024, 1, 1, 1, 25, 171, 19, False],
+            [2, 100, 100, 2024, 1, 1, 1, 25, 171, 19, False],
+            [3, 100, 100, 2024, 1, 1, 1, 25, 171, 19, False],
+            [4, 100, 100, 2024, 1, 1, 1, 25, 171, 19, False],
+            [5, 100, 100, 2024, 1, 1, 1, 25, 171, 19, False],
+        ],
+        schema=output_schema,
+    )
+
+    output = transformer.add_station_coordinates(df, station_df)
+
+    assert set(output.columns) == {
+        "bike_demand",
+        "dock_demand",
+        "year",
+        "month",
+        "dayofmonth",
+        "weekday",
+        "weekofyear",
+        "dayofyear",
+        "hour",
+        "is_holiday",
+        "latitude",
+        "longitude",
+    }

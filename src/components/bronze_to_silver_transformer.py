@@ -164,3 +164,15 @@ class BronzeToSilverTransformer:
         df = self.set_as_holiday(df, 11, 11)  # Veterans
         df = self.set_as_holiday(df, 12, 25)  # Chirsmas
         return df
+
+    def add_station_coordinates(
+        self,
+        df: DataFrame,
+        station_df: DataFrame,
+    ) -> DataFrame:
+        return (
+            df.join(station_df, df.station_id == station_df.id, how="left")
+            .drop("name")
+            .drop("id")
+            .drop("station_id")
+        )
