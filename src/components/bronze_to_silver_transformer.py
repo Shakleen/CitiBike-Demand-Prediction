@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
 import pyspark.sql.functions as F
+from typing import Tuple
 
 
 @dataclass
@@ -32,4 +33,10 @@ class BronzeToSilverTransformer:
             .withColumn("weekofyear", F.weekofyear(column_name))
             .withColumn("dayofyear", F.dayofyear(column_name))
             .withColumn("hour", F.hour(column_name))
+            .drop(column_name)
         )
+
+    def split_start_and_end_time(self, df: DataFrame) -> Tuple[DataFrame, DataFrame]:
+        start_df = df.select("row_number", "start_time")
+        end_df = df.select("row_number", "end_time")
+        return (start_df, end_df)

@@ -85,11 +85,10 @@ def test_create_time_features(
 ):
     dataframe = spark.createDataFrame(
         [pd.Timestamp("2024-06-19 19:24:11"), pd.Timestamp("2024-06-19 19:35:37")],
-        schema=T.StructType([T.StructField("timestamp", T.StringType(), True)]),
+        schema=T.StructType([T.StructField("start_time", T.TimestampType(), True)]),
     )
-    dataframe = dataframe.withColumn("timestamp", F.to_timestamp("timestamp"))
 
-    output = transformer.create_time_features(dataframe, "timestamp")
+    output = transformer.create_time_features(dataframe, "start_time")
 
     assert isinstance(output, DataFrame)
     assert set(output.columns) == {
@@ -100,5 +99,43 @@ def test_create_time_features(
         "weekofyear",
         "dayofyear",
         "hour",
-        "timestamp",
     }
+
+
+def test_split_start_and_end_time(
+    transformer: BronzeToSilverTransformer,
+    spark: SparkSession,
+):
+    dataframe = spark.createDataFrame(
+        [
+            [
+                "2024-06-19 19:24:11",
+                "2024-06-19 19:35:37",
+                1443109011456,
+            ],
+            [
+                "2024-06-20 17:01:54",
+                "2024-06-20 17:14:34",
+                1443109011457,
+            ],
+        ],
+        schema=T.StructType(
+            [
+                T.StructField("start_time", T.StringType(), True),
+                T.StructField("end_time", T.StringType(), True),
+                T.StructField("row_number", T.LongType(), True),
+            ]
+        ),
+    )
+    dataframe = dataframe.withColumn(
+        "start_time", F.to_timestamp("start_time")
+    ).withColumn("end_time", F.to_timestamp("end_time"))
+
+    start_df, end_df = transformer.split_start_and_end_time(dataframe)
+
+    assert isinstance(start_df, DataFrame)
+    assert start_df.count() == dataframe.count()
+    assert set(start_df.columns) == {"row_number", "start_time"}
+    assert isinstance(end_df, DataFrame)
+    assert end_df.count() == dataframe.count()
+    assert set(end_df.columns) == {"row_number", "end_time"}
