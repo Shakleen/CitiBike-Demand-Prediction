@@ -101,3 +101,14 @@ class BronzeToSilverTransformer:
                 F.lit(True),
             ).otherwise(F.col("is_holiday")),
         )
+
+    def holiday_labor(self, df: DataFrame) -> DataFrame:
+        return df.withColumn(
+            "is_holiday",
+            F.when(
+                ((F.col("month")) == 9)  # September
+                & ((F.col("weekday")) == 0)  # Monday
+                & ((F.col("dayofmonth")) <= 7),  # 1st week
+                F.lit(True),
+            ).otherwise(F.col("is_holiday")),
+        )

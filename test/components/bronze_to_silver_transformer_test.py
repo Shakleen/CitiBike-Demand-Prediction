@@ -329,3 +329,21 @@ def test_holiday_MLK_and_presidents_day(
     assert (
         output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == expected
     )
+
+
+def test_holiday_labor(
+    transformer: BronzeToSilverTransformer,
+    demand_dataframe: DataFrame,
+):
+    expected = [
+        month == 9 and weekday == 0 and dayofmonth <= 7
+        for month in range(1, 13, 1)
+        for weekday in range(7)
+        for dayofmonth in range(1, 32, 3)
+    ]
+
+    output = transformer.holiday_labor(demand_dataframe)
+
+    assert (
+        output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == expected
+    )
