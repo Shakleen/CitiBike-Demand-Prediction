@@ -6,7 +6,7 @@ from pyspark.sql.functions import (
     col,
     regexp_extract,
     to_timestamp,
-    coalesce,
+    min,
     when,
     month,
     year,
@@ -127,25 +127,22 @@ class RawToBronzeTransformer:
         return df_1.union(df_2).union(df_3)
 
     def add_one_month_for_202108(self, df: DataFrame) -> DataFrame:
-        return (
-            df.withColumn(
-                "start_time",
-                when(
-                    (col("file_name").startswith("202108"))
-                    & (year("start_time") == 2021)
-                    & (month("start_time") == 7),
-                    add_months(col("start_time"), 1),
-                ).otherwise(col("start_time")),
-            )
-            .withColumn(
-                "end_time",
-                when(
-                    (col("file_name").startswith("202108"))
-                    & (year("end_time") == 2021)
-                    & (month("end_time") == 7),
-                    add_months(col("end_time"), 1),
-                ).otherwise(col("end_time")),
-            )
+        return df.withColumn(
+            "start_time",
+            when(
+                (col("file_name").startswith("202108"))
+                & (year("start_time") == 2021)
+                & (month("start_time") == 7),
+                add_months(col("start_time"), 1),
+            ).otherwise(col("start_time")),
+        ).withColumn(
+            "end_time",
+            when(
+                (col("file_name").startswith("202108"))
+                & (year("end_time") == 2021)
+                & (month("end_time") == 7),
+                add_months(col("end_time"), 1),
+            ).otherwise(col("end_time")),
         )
 
     def get_station_dataframe(self, df: DataFrame) -> DataFrame:
@@ -173,6 +170,11 @@ class RawToBronzeTransformer:
 
         # Separating station Data
         station_df = self.get_station_dataframe(df)
+        station_df = station_df.groupBy("id").agg(
+            min("name").alias("name"),
+            min("latitude").alias("latitude"),
+            min("longitude").alias("longitude"),
+        )
 
         # Mapping df to station ids
         row_to_station_df = df.select(

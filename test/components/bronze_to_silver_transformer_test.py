@@ -4,6 +4,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
 import pyspark.sql.types as T
 import pyspark.sql.functions as F
+import pandas as pd
 
 from src.components.bronze_to_silver_transformer import (
     BronzeToSilverTransformerConfig,
@@ -83,20 +84,12 @@ def test_create_time_features(
     spark: SparkSession,
 ):
     dataframe = spark.createDataFrame(
-        [
-            ("2024-10-01 10:00:00"),
-            ("2024-10-02 11:00:00"),
-            ("2024-10-03 12:00:00"),
-        ],
-        schema=T.StructType(
-            [
-                T.StructField("timestamp", T.StringType(), True),
-            ]
-        ),
+        [pd.Timestamp("2024-06-19 19:24:11"), pd.Timestamp("2024-06-19 19:35:37")],
+        schema=T.StructType([T.StructField("timestamp", T.StringType(), True)]),
     )
     dataframe = dataframe.withColumn("timestamp", F.to_timestamp("timestamp"))
 
-    output = transformer.create_time_features(dataframe)
+    output = transformer.create_time_features(dataframe, "timestamp")
 
     assert isinstance(output, DataFrame)
     assert set(output.columns) == {
