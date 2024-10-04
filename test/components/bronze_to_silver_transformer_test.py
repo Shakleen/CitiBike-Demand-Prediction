@@ -171,7 +171,9 @@ def test_attach_station_ids(
     mapper_dataframe: DataFrame,
 ):
     start_df, end_df = transformer.split_start_and_end_time(time_dataframe)
-    start_df, end_df = transformer.attach_station_ids(start_df, end_df, mapper_dataframe)
+    start_df, end_df = transformer.attach_station_ids(
+        start_df, end_df, mapper_dataframe
+    )
 
     assert isinstance(start_df, DataFrame)
     assert start_df.count() == time_dataframe.count()
@@ -179,3 +181,33 @@ def test_attach_station_ids(
     assert isinstance(end_df, DataFrame)
     assert end_df.count() == time_dataframe.count()
     assert set(end_df.columns) == {"row_number", "time", "station_id"}
+
+
+def test_count_group_by_station_and_time(
+    transformer: BronzeToSilverTransformer,
+    spark: SparkSession,
+):
+    dataframe = spark.createDataFrame(
+        [
+            [1, "2024-06-19 19:24:11", 10],
+            [2, "2024-06-20 17:01:54", 10],
+            [3, "2024-06-20 17:01:54", 10],
+            [4, "2024-06-21 17:01:54", 20],
+        ],
+        schema=T.StructType(
+            [
+                T.StructField("row_number", T.LongType(), True),
+                T.StructField("time", T.StringType(), True),
+                T.StructField("station_id", T.IntegerType(), True),
+            ]
+        ),
+    )
+    dataframe = dataframe.withColumn("time", F.to_timestamp("time"))
+
+    output = transformer.count_group_by_station_and_time(dataframe)
+
+    assert isinstance(output, DataFrame)
+    assert output.count() == 3
+    assert set(output.columns) == {"station_id", "time", "count"}
+    assert output.select("count").toPandas().to_numpy().flatten().tolist() == [1, 2, 1]
+

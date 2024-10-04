@@ -37,8 +37,12 @@ class BronzeToSilverTransformer:
         )
 
     def split_start_and_end_time(self, df: DataFrame) -> Tuple[DataFrame, DataFrame]:
-        start_df = df.select("row_number", "start_time").withColumnRenamed("start_time", "time")
-        end_df = df.select("row_number", "end_time").withColumnRenamed("end_time", "time")
+        start_df = df.select("row_number", "start_time").withColumnRenamed(
+            "start_time", "time"
+        )
+        end_df = df.select("row_number", "end_time").withColumnRenamed(
+            "end_time", "time"
+        )
         return (start_df, end_df)
 
     def attach_station_ids(
@@ -58,3 +62,8 @@ class BronzeToSilverTransformer:
             how="inner",
         ).withColumnRenamed("end_station_id", "station_id")
         return (start_df, end_df)
+
+    def count_group_by_station_and_time(self, df: DataFrame) -> DataFrame:
+        df = df.withColumn("time", F.date_trunc("hour", "time"))
+        count_df = df.groupBy("station_id", "time").agg(F.count("row_number").alias("count"))
+        return count_df
