@@ -13,3 +13,9 @@ class SilverToGoldTransformerConfig:
     root_delta_path: str = os.path.join("Data", "delta")
     silver_delta_path: str = os.path.join(root_delta_path, "silver")
     gold_delta_path: str = os.path.join(root_delta_path, "gold")
+
+
+class SilverToGoldTransformer:
+    def __init__(self, spark: SparkSession):
+        self.spark = spark
+        self.config = SilverToGoldTransformerConfig()
