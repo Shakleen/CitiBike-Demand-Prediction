@@ -37,8 +37,8 @@ class BronzeToSilverTransformer:
         )
 
     def split_start_and_end_time(self, df: DataFrame) -> Tuple[DataFrame, DataFrame]:
-        start_df = df.select("row_number", "start_time")
-        end_df = df.select("row_number", "end_time")
+        start_df = df.select("row_number", "start_time").withColumnRenamed("start_time", "time")
+        end_df = df.select("row_number", "end_time").withColumnRenamed("end_time", "time")
         return (start_df, end_df)
 
     def attach_station_ids(
@@ -51,10 +51,10 @@ class BronzeToSilverTransformer:
             mapper_df.select("row_number", "start_station_id"),
             on="row_number",
             how="inner",
-        )
+        ).withColumnRenamed("start_station_id", "station_id")
         end_df = end_df.join(
             mapper_df.select("row_number", "end_station_id"),
             on="row_number",
             how="inner",
-        )
+        ).withColumnRenamed("end_station_id", "station_id")
         return (start_df, end_df)

@@ -159,10 +159,10 @@ def test_split_start_and_end_time(
 
     assert isinstance(start_df, DataFrame)
     assert start_df.count() == time_dataframe.count()
-    assert set(start_df.columns) == {"row_number", "start_time"}
+    assert set(start_df.columns) == {"row_number", "time"}
     assert isinstance(end_df, DataFrame)
     assert end_df.count() == time_dataframe.count()
-    assert set(end_df.columns) == {"row_number", "end_time"}
+    assert set(end_df.columns) == {"row_number", "time"}
 
 
 def test_attach_station_ids(
@@ -175,7 +175,7 @@ def test_attach_station_ids(
 
     assert isinstance(start_df, DataFrame)
     assert start_df.count() == time_dataframe.count()
-    assert set(start_df.columns) == {"row_number", "start_time", "start_station_id"}
+    assert set(start_df.columns) == {"row_number", "time", "station_id"}
     assert isinstance(end_df, DataFrame)
     assert end_df.count() == time_dataframe.count()
-    assert set(end_df.columns) == {"row_number", "end_time", "end_station_id"}
+    assert set(end_df.columns) == {"row_number", "time", "station_id"}
