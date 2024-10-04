@@ -211,3 +211,57 @@ def test_count_group_by_station_and_time(
     assert set(output.columns) == {"station_id", "time", "count"}
     assert output.select("count").toPandas().to_numpy().flatten().tolist() == [1, 2, 1]
 
+
+def test_combine_on_station_id_and_time(
+    transformer: BronzeToSilverTransformer,
+    spark: SparkSession,
+):
+    start_df = spark.createDataFrame(
+        [
+            [1, "2024-06-19 19:00:00", 100],
+            [2, "2024-06-20 17:00:00", 200],
+            [3, "2024-06-21 17:00:00", 300],
+        ],
+        schema=T.StructType(
+            [
+                T.StructField("station_id", T.IntegerType(), True),
+                T.StructField("time", T.StringType(), True),
+                T.StructField("count", T.IntegerType(), True),
+            ]
+        ),
+    )
+    start_df = start_df.withColumn("time", F.to_timestamp("time"))
+
+    end_df = spark.createDataFrame(
+        [
+            [1, "2024-06-19 19:00:00", 100],
+            [2, "2024-06-20 17:00:00", 200],
+            [4, "2024-06-21 17:00:00", 400],
+        ],
+        schema=T.StructType(
+            [
+                T.StructField("station_id", T.IntegerType(), True),
+                T.StructField("time", T.StringType(), True),
+                T.StructField("count", T.IntegerType(), True),
+            ]
+        ),
+    )
+    end_df = end_df.withColumn("time", F.to_timestamp("time"))
+
+    output = transformer.combine_on_station_id_and_time(start_df, end_df)
+
+    assert isinstance(output, DataFrame)
+    assert output.count() == 4
+    assert set(output.columns) == {"station_id", "time", "bike_demand", "dock_demand"}
+    assert output.select("bike_demand").toPandas().to_numpy().flatten().tolist() == [
+        100,
+        200,
+        300,
+        0,
+    ]
+    assert output.select("dock_demand").toPandas().to_numpy().flatten().tolist() == [
+        100,
+        200,
+        0,
+        400,
+    ]

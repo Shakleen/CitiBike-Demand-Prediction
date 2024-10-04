@@ -65,5 +65,21 @@ class BronzeToSilverTransformer:
 
     def count_group_by_station_and_time(self, df: DataFrame) -> DataFrame:
         df = df.withColumn("time", F.date_trunc("hour", "time"))
-        count_df = df.groupBy("station_id", "time").agg(F.count("row_number").alias("count"))
+        count_df = df.groupBy("station_id", "time").agg(
+            F.count("row_number").alias("count")
+        )
         return count_df
+
+    def combine_on_station_id_and_time(
+        self,
+        start_df: DataFrame,
+        end_df: DataFrame,
+    ) -> DataFrame:
+        start_df = start_df.withColumnRenamed("count", "bike_demand")
+        end_df = end_df.withColumnRenamed("count", "dock_demand")
+        combined_df = start_df.join(
+            end_df,
+            on=["station_id", "time"],
+            how="fullouter",
+        ).fillna(0)
+        return combined_df
