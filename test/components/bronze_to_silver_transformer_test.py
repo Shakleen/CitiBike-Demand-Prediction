@@ -347,3 +347,21 @@ def test_holiday_labor(
     assert (
         output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == expected
     )
+
+
+def test_holiday_columbus(
+    transformer: BronzeToSilverTransformer,
+    demand_dataframe: DataFrame,
+):
+    expected = [
+        month == 10 and weekday == 0 and 7 < dayofmonth <= 14
+        for month in range(1, 13, 1)
+        for weekday in range(7)
+        for dayofmonth in range(1, 32, 3)
+    ]
+
+    output = transformer.holiday_columbus(demand_dataframe)
+
+    assert (
+        output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == expected
+    )

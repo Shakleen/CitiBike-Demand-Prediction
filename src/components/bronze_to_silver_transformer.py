@@ -112,3 +112,15 @@ class BronzeToSilverTransformer:
                 F.lit(True),
             ).otherwise(F.col("is_holiday")),
         )
+
+    def holiday_columbus(self, df: DataFrame) -> DataFrame:
+        return df.withColumn(
+            "is_holiday",
+            F.when(
+                ((F.col("month")) == 10)  # October
+                & ((F.col("weekday")) == 0)  # Monday
+                & ((F.col("dayofmonth")) > 7)  # 2nd Week
+                & ((F.col("dayofmonth")) <= 14),  # 2nd Week
+                F.lit(True),
+            ).otherwise(F.col("is_holiday")),
+        )
