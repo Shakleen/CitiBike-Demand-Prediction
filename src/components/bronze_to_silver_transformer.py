@@ -135,3 +135,32 @@ class BronzeToSilverTransformer:
                 F.lit(True),
             ).otherwise(F.col("is_holiday")),
         )
+
+    def set_as_holiday(self, df: DataFrame, month: int, dayofmonth: int) -> DataFrame:
+        return df.withColumn(
+            "is_holiday",
+            F.when(
+                (F.col("month") == month) & (F.col("dayofmonth") == dayofmonth),
+                (
+                    F.when(
+                        F.col("weekday") <= 4, F.lit(True)  # Weekday
+                    ).otherwise(  # True
+                        F.when(
+                            F.date_add(F.col("weekday"), -1) == 4
+                        ),  # Falls on Thursday
+                        F.lit(True).otherwise(  # True
+                            F.date_add(F.col("weekday"), +1) == 0
+                        ),  # Falls on Thursday
+                        F.lit(True),
+                    )
+                ),  # True
+            ).otherwise(F.col("is_holiday")),
+        )
+
+    def mark_specific_dates_as_holiday(self, df: DataFrame) -> DataFrame:
+        df = self.set_as_holiday(df, 1, 1)  # New Year
+        df = self.set_as_holiday(df, 6, 19)  # Juneteenth
+        df = self.set_as_holiday(df, 7, 4)  # Independence
+        df = self.set_as_holiday(df, 11, 11)  # Veterans
+        df = self.set_as_holiday(df, 12, 25)  # Chirsmas
+        return df
