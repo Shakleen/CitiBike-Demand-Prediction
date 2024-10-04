@@ -13,6 +13,7 @@ from pyspark.sql.functions import (
     add_months,
 )
 from typing import Tuple
+from src.utils import read_delta, write_delta
 
 if __name__ == "__main__":
     from src.logger import logging
@@ -21,21 +22,15 @@ if __name__ == "__main__":
 @dataclass
 class RawToBronzeTransformerConfig:
     root_delta_path: str = os.path.join("Data", "delta")
-    raw_data_path: str = os.path.join(root_delta_path, "raw")
-    bronze_data_path: str = os.path.join(root_delta_path, "bronze")
-    station_data_path: str = os.path.join(root_delta_path, "station")
+    raw_delta_path: str = os.path.join(root_delta_path, "raw")
+    bronze_delta_path: str = os.path.join(root_delta_path, "bronze")
+    station_delta_path: str = os.path.join(root_delta_path, "station")
 
 
 class RawToBronzeTransformer:
     def __init__(self, spark: SparkSession):
         self.config = RawToBronzeTransformerConfig()
         self.spark = spark
-
-    def read_raw_delta(self) -> DataFrame:
-        return self.spark.read.format("delta").load(self.config.raw_data_path)
-
-    def write_delta(self, df: DataFrame, path: str):
-        df.write.save(path=path, format="delta", mode="overwrite")
 
     def create_file_name_column(self, df: DataFrame) -> DataFrame:
         regex_str = "[^\\/]+$"
@@ -192,7 +187,7 @@ class RawToBronzeTransformer:
 
     def transform(self):
         logging.info("Reading raw delta table")
-        df = self.read_raw_delta()
+        df = read_delta(self.spark, self.config.raw_delta_path)
 
         logging.info("Creating file name column")
         df = self.create_file_name_column(df)
@@ -202,8 +197,8 @@ class RawToBronzeTransformer:
         station_df, df = self.split_station_and_time(df)
 
         logging.info("Saving as deltalakes")
-        # self.write_delta(station_df, self.config.station_data_path)
-        self.write_delta(df, self.config.bronze_data_path)
+        write_delta(station_df, self.config.station_delta_path)
+        write_delta(df, self.config.bronze_delta_path)
 
 
 if __name__ == "__main__":

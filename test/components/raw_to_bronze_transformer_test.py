@@ -168,9 +168,9 @@ def test_config():
     config = RawToBronzeTransformerConfig()
 
     assert hasattr(config, "root_delta_path")
-    assert hasattr(config, "raw_data_path")
-    assert hasattr(config, "bronze_data_path")
-    assert hasattr(config, "station_data_path")
+    assert hasattr(config, "raw_delta_path")
+    assert hasattr(config, "bronze_delta_path")
+    assert hasattr(config, "station_delta_path")
 
 
 def test_init(transformer: RawToBronzeTransformer, spark: SparkSession):
@@ -179,37 +179,6 @@ def test_init(transformer: RawToBronzeTransformer, spark: SparkSession):
     assert transformer.spark is spark
     assert isinstance(transformer.config, RawToBronzeTransformerConfig)
     assert isinstance(transformer.spark, SparkSession)
-
-
-def test_read_raw_delta():
-    spark_mock = Mock(SparkSession)
-    transformer = RawToBronzeTransformer(spark_mock)
-    dataframe_mock = Mock(DataFrame)
-
-    spark_mock.read.format("delta").load.return_value = dataframe_mock
-
-    df = transformer.read_raw_delta()
-
-    spark_mock.read.format.assert_called_with("delta")
-    spark_mock.read.format("delta").load.assert_called_with(
-        transformer.config.raw_data_path
-    )
-
-    assert df is dataframe_mock
-
-
-def test_write_delta():
-    dataframe = Mock(DataFrame)
-    spark_mock = Mock(SparkSession)
-    transformer = RawToBronzeTransformer(spark_mock)
-
-    transformer.write_delta(dataframe, transformer.config.bronze_data_path)
-
-    dataframe.write.save.assert_called_once_with(
-        path=transformer.config.bronze_data_path,
-        format="delta",
-        mode="overwrite",
-    )
 
 
 def test_create_file_name_column(
@@ -314,4 +283,10 @@ def test_split_station_and_time(
     assert isinstance(station_df, DataFrame)
     assert isinstance(df, DataFrame)
     assert set(station_df.columns) == {"id", "name", "latitude", "longitude"}
-    assert set(df.columns) == {"start_time", "end_time", "row_number", "start_station_id", "end_station_id"}
+    assert set(df.columns) == {
+        "start_time",
+        "end_time",
+        "row_number",
+        "start_station_id",
+        "end_station_id",
+    }
