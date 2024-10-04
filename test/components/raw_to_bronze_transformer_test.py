@@ -171,7 +171,6 @@ def test_config():
     assert hasattr(config, "raw_data_path")
     assert hasattr(config, "bronze_data_path")
     assert hasattr(config, "station_data_path")
-    assert hasattr(config, "row_to_station_data_path")
 
 
 def test_init(transformer: RawToBronzeTransformer, spark: SparkSession):
@@ -310,15 +309,9 @@ def test_split_station_and_time(
     dataframe: DataFrame,
     transformer: RawToBronzeTransformer,
 ):
-    station_df, row_to_station_df, df = transformer.split_station_and_time(dataframe)
+    station_df, df = transformer.split_station_and_time(dataframe)
 
     assert isinstance(station_df, DataFrame)
-    assert isinstance(row_to_station_df, DataFrame)
     assert isinstance(df, DataFrame)
     assert set(station_df.columns) == {"id", "name", "latitude", "longitude"}
-    assert set(df.columns) == {"start_time", "end_time", "row_number"}
-    assert set(row_to_station_df.columns) == {
-        "row_number",
-        "start_station_id",
-        "end_station_id",
-    }
+    assert set(df.columns) == {"start_time", "end_time", "row_number", "start_station_id", "end_station_id"}

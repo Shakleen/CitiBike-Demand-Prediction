@@ -8,8 +8,9 @@ from typing import Tuple
 
 @dataclass
 class BronzeToSilverTransformerConfig:
-    root_delta_path: str = os.path.join("data", "delta")
+    root_delta_path: str = os.path.join("Data", "delta")
     bronze_delta_path: str = os.path.join(root_delta_path, "bronze")
+    station_delta_path: str = os.path.join(root_delta_path, "station")
     silver_delta_path: str = os.path.join(root_delta_path, "silver")
 
 
@@ -18,8 +19,8 @@ class BronzeToSilverTransformer:
         self.spark = spark
         self.config = BronzeToSilverTransformerConfig()
 
-    def read_bronze_delta(self) -> DataFrame:
-        return self.spark.read.format("delta").load(self.config.bronze_delta_path)
+    def read_delta(self, path: str) -> DataFrame:
+        return self.spark.read.format("delta").load(path)
 
     def write_delta(self, df: DataFrame, path: str):
         df.write.save(path=path, format="delta", mode="overwrite")
@@ -36,31 +37,17 @@ class BronzeToSilverTransformer:
             .drop("time")
         )
 
-    def split_start_and_end_time(self, df: DataFrame) -> Tuple[DataFrame, DataFrame]:
-        start_df = df.select("row_number", "start_time").withColumnRenamed(
-            "start_time", "time"
+    def split_start_and_end(self, df: DataFrame) -> Tuple[DataFrame, DataFrame]:
+        start_df = (
+            df.select("row_number", "start_time", "start_station_id")
+            .withColumnRenamed("start_time", "time")
+            .withColumnRenamed("start_station_id", "station_id")
         )
-        end_df = df.select("row_number", "end_time").withColumnRenamed(
-            "end_time", "time"
+        end_df = (
+            df.select("row_number", "end_time", "end_station_id")
+            .withColumnRenamed("end_time", "time")
+            .withColumnRenamed("end_station_id", "station_id")
         )
-        return (start_df, end_df)
-
-    def attach_station_ids(
-        self,
-        start_df: DataFrame,
-        end_df: DataFrame,
-        mapper_df: DataFrame,
-    ) -> Tuple[DataFrame, DataFrame]:
-        start_df = start_df.join(
-            mapper_df.select("row_number", "start_station_id"),
-            on="row_number",
-            how="inner",
-        ).withColumnRenamed("start_station_id", "station_id")
-        end_df = end_df.join(
-            mapper_df.select("row_number", "end_station_id"),
-            on="row_number",
-            how="inner",
-        ).withColumnRenamed("end_station_id", "station_id")
         return (start_df, end_df)
 
     def count_group_by_station_and_time(self, df: DataFrame) -> DataFrame:
@@ -140,21 +127,28 @@ class BronzeToSilverTransformer:
         return df.withColumn(
             "is_holiday",
             F.when(
-                (F.col("month") == month) & (F.col("dayofmonth") == dayofmonth),
-                (
+                # Falls in a weekday, so mark as Holiday
+                ((F.col("month")) == month)
+                & ((F.col("dayofmonth")) == dayofmonth)
+                & ((F.col("weekday")) <= 4),  # Falls in Weekday
+                F.lit(True),
+            ).otherwise(
+                F.when(
+                    # Falls on Saturday
+                    ((F.col("month")) == month)
+                    & ((F.col("dayofmonth")) == dayofmonth - 1)
+                    & (F.col("weekday") - 1 == 4),
+                    F.lit(True),
+                ).otherwise(
                     F.when(
-                        F.col("weekday") <= 4, F.lit(True)  # Weekday
-                    ).otherwise(  # True
-                        F.when(
-                            F.date_add(F.col("weekday"), -1) == 4
-                        ),  # Falls on Thursday
-                        F.lit(True).otherwise(  # True
-                            F.date_add(F.col("weekday"), +1) == 0
-                        ),  # Falls on Thursday
+                        # Falls on Sunday
+                        ((F.col("month")) == month)
+                        & ((F.col("dayofmonth")) == dayofmonth + 1)
+                        & (F.col("weekday") + 1 == 0),
                         F.lit(True),
-                    )
-                ),  # True
-            ).otherwise(F.col("is_holiday")),
+                    ).otherwise(F.col("is_holiday"))
+                )
+            ),
         )
 
     def mark_specific_dates_as_holiday(self, df: DataFrame) -> DataFrame:
@@ -176,3 +170,47 @@ class BronzeToSilverTransformer:
             .drop("id")
             .drop("station_id")
         )
+
+    def transform(self):
+        df = self.read_delta(self.config.bronze_delta_path)
+        station_df = self.read_delta(self.config.station_delta_path)
+
+        start_df, end_df = self.split_start_and_end(df)
+        start_df = self.count_group_by_station_and_time(start_df)
+        end_df = self.count_group_by_station_and_time(end_df)
+
+        combined_df = self.combine_on_station_id_and_time(start_df, end_df)
+        combined_df = self.add_station_coordinates(combined_df, station_df)
+
+        combined_df = self.create_time_features(combined_df)
+        combined_df = combined_df.withColumn("is_holiday", F.lit(False))
+        combined_df = self.mark_specific_dates_as_holiday(combined_df)
+        combined_df = self.holiday_weekend(combined_df)
+        combined_df = self.holiday_MLK_and_presidents_day(combined_df)
+        combined_df = self.holiday_columbus(combined_df)
+        combined_df = self.holiday_labor(combined_df)
+        combined_df = self.holiday_thanksgiving(combined_df)
+
+        self.write_delta(combined_df, self.config.silver_delta_path)
+
+
+if __name__ == "__main__":
+    import pyspark
+    from delta import configure_spark_with_delta_pip
+
+    builder = (
+        pyspark.sql.SparkSession.builder.appName("bronze_to_silver")
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        )
+        .config("spark.driver.memory", "15g")
+        .config("spark.sql.shuffle.partitions", "6")
+        .config("spark.sql.legacy.timeParserPolicy", "LEGACY")
+    )
+
+    spark = configure_spark_with_delta_pip(builder).getOrCreate()
+
+    transformer = BronzeToSilverTransformer(spark)
+    transformer.transform()

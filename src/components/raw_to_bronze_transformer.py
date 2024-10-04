@@ -24,7 +24,6 @@ class RawToBronzeTransformerConfig:
     raw_data_path: str = os.path.join(root_delta_path, "raw")
     bronze_data_path: str = os.path.join(root_delta_path, "bronze")
     station_data_path: str = os.path.join(root_delta_path, "station")
-    row_to_station_data_path: str = os.path.join(root_delta_path, "row_to_station")
 
 
 class RawToBronzeTransformer:
@@ -176,18 +175,11 @@ class RawToBronzeTransformer:
             min("longitude").alias("longitude"),
         )
 
-        # Mapping df to station ids
-        row_to_station_df = df.select(
-            "row_number", "start_station_id", "end_station_id"
-        )
-
         # Dropping station related columns
         df = df.drop(
-            "start_station_id",
             "start_station_name",
             "start_station_latitude",
             "start_station_longitude",
-            "end_station_id",
             "end_station_name",
             "end_station_latitude",
             "end_station_longitude",
@@ -196,21 +188,21 @@ class RawToBronzeTransformer:
             "file_name",
         )
 
-        return (station_df, row_to_station_df, df)
+        return (station_df, df)
 
     def transform(self):
         logging.info("Reading raw delta table")
         df = self.read_raw_delta()
+
         logging.info("Creating file name column")
         df = self.create_file_name_column(df)
 
         df = self.set_timestamp_datatype(df)
 
-        station_df, row_to_station_df, df = self.split_station_and_time(df)
+        station_df, df = self.split_station_and_time(df)
 
         logging.info("Saving as deltalakes")
-        self.write_delta(station_df, self.config.station_data_path)
-        self.write_delta(row_to_station_df, self.config.row_to_station_data_path)
+        # self.write_delta(station_df, self.config.station_data_path)
         self.write_delta(df, self.config.bronze_data_path)
 
 
