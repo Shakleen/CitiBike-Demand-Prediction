@@ -124,3 +124,14 @@ class BronzeToSilverTransformer:
                 F.lit(True),
             ).otherwise(F.col("is_holiday")),
         )
+
+    def holiday_thanksgiving(self, df: DataFrame) -> DataFrame:
+        return df.withColumn(
+            "is_holiday",
+            F.when(
+                ((F.col("month")) == 11)  # November
+                & ((F.col("weekday")) == 3)  # Thursday
+                & ((F.col("dayofmonth")) >= 22),  # 4th Week
+                F.lit(True),
+            ).otherwise(F.col("is_holiday")),
+        )
