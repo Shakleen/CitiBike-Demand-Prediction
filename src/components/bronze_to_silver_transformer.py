@@ -5,6 +5,8 @@ from pyspark.sql.dataframe import DataFrame
 import pyspark.sql.functions as F
 from typing import Tuple
 
+from src.utils import read_delta, write_delta
+
 
 @dataclass
 class BronzeToSilverTransformerConfig:
@@ -18,12 +20,6 @@ class BronzeToSilverTransformer:
     def __init__(self, spark: SparkSession) -> None:
         self.spark = spark
         self.config = BronzeToSilverTransformerConfig()
-
-    def read_delta(self, path: str) -> DataFrame:
-        return self.spark.read.format("delta").load(path)
-
-    def write_delta(self, df: DataFrame, path: str):
-        df.write.save(path=path, format="delta", mode="overwrite")
 
     def create_time_features(self, df: DataFrame) -> DataFrame:
         return (
@@ -172,8 +168,8 @@ class BronzeToSilverTransformer:
         )
 
     def transform(self):
-        df = self.read_delta(self.config.bronze_delta_path)
-        station_df = self.read_delta(self.config.station_delta_path)
+        df = read_delta(self.spark, self.config.bronze_delta_path)
+        station_df = read_delta(self.spark, self.config.station_delta_path)
 
         start_df, end_df = self.split_start_and_end(df)
         start_df = self.count_group_by_station_and_time(start_df)
@@ -191,7 +187,7 @@ class BronzeToSilverTransformer:
         combined_df = self.holiday_labor(combined_df)
         combined_df = self.holiday_thanksgiving(combined_df)
 
-        self.write_delta(combined_df, self.config.silver_delta_path)
+        write_delta(combined_df, self.config.silver_delta_path)
 
 
 if __name__ == "__main__":
