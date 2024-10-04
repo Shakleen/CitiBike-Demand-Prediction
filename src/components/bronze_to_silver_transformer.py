@@ -94,10 +94,10 @@ class BronzeToSilverTransformer:
         return df.withColumn(
             "is_holiday",
             F.when(
-                (F.month(F.col("date")).isin(1, 2))  # January or February
-                & (F.weekday(F.col("date")) == 0)  # Monday
-                & (F.dayofmonth(F.col("date")) >= 15)  # 3rd week
-                & (F.dayofmonth(F.col("date")) <= 21),  # 3rd week
+                ((F.col("month")).isin(1, 2))  # January or February
+                & ((F.col("weekday")) == 0)  # Monday
+                & ((F.col("dayofmonth")) >= 15)  # 3rd week
+                & ((F.col("dayofmonth")) <= 21),  # 3rd week
                 F.lit(True),
             ).otherwise(F.col("is_holiday")),
         )

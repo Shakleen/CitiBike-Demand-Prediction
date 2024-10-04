@@ -283,31 +283,48 @@ def test_combine_on_station_id_and_time(
     ]
 
 
-@pytest.mark.parametrize(
-    ("weekday", "is_holiday"),
-    [
-        (0, False),
-        (1, False),
-        (2, False),
-        (3, False),
-        (4, False),
-        (5, True),
-        (6, True),
-    ],
-)
-def test_holiday_weekend(
-    transformer: BronzeToSilverTransformer,
-    spark: SparkSession,
-    weekday: int,
-    is_holiday: bool,
-):
-    df = spark.createDataFrame(
-        [[1, 100, 100, 2024, 6, 19, weekday, 25, 171, 19, False]],
-        output_schema,
-    )
+def test_holiday_weekend(transformer: BronzeToSilverTransformer, spark: SparkSession):
+    data = [
+        [1, 100, 100, 2024, month, dayofmonth, weekday, 25, 171, 19, False]
+        for month in range(1, 13, 1)
+        for weekday in range(7)
+        for dayofmonth in range(1, 32, 1)
+    ]
+    expected = [
+        weekday > 4
+        for _ in range(1, 13, 1)
+        for weekday in range(7)
+        for _ in range(1, 32, 1)
+    ]
+    df = spark.createDataFrame(data, output_schema)
 
     output = transformer.holiday_weekend(df)
 
-    assert output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == [
-        is_holiday
+    assert (
+        output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == expected
+    )
+
+
+def test_holiday_MLK_and_presidents_day(
+    transformer: BronzeToSilverTransformer, spark: SparkSession
+):
+    data = [
+        [1, 100, 100, 2024, month, dayofmonth, weekday, 25, 171, 19, False]
+        for month in range(1, 13, 1)
+        for weekday in range(7)
+        for dayofmonth in range(1, 32, 1)
     ]
+    expected = [
+        month < 3 and weekday == 0 and 15 <= dayofmonth <= 21
+        for month in range(1, 13, 1)
+        for weekday in range(7)
+        for dayofmonth in range(1, 32, 1)
+    ]
+
+    df = spark.createDataFrame(data, output_schema)
+
+    output = transformer.holiday_MLK_and_presidents_day(df)
+
+    assert (
+        output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == expected
+    )
