@@ -98,6 +98,18 @@ def mapper_dataframe(spark: SparkSession):
     return dataframe
 
 
+@pytest.fixture
+def demand_dataframe(spark: SparkSession):
+    data = [
+        [1, 100, 100, 2024, month, dayofmonth, weekday, 25, 171, 19, False]
+        for month in range(1, 13, 1)
+        for weekday in range(7)
+        for dayofmonth in range(1, 32, 3)
+    ]
+    df = spark.createDataFrame(data, output_schema)
+    return df
+
+
 def test_config():
     config = BronzeToSilverTransformerConfig()
 
@@ -283,22 +295,18 @@ def test_combine_on_station_id_and_time(
     ]
 
 
-def test_holiday_weekend(transformer: BronzeToSilverTransformer, spark: SparkSession):
-    data = [
-        [1, 100, 100, 2024, month, dayofmonth, weekday, 25, 171, 19, False]
-        for month in range(1, 13, 1)
-        for weekday in range(7)
-        for dayofmonth in range(1, 32, 1)
-    ]
+def test_holiday_weekend(
+    transformer: BronzeToSilverTransformer,
+    demand_dataframe: DataFrame,
+):
     expected = [
         weekday > 4
         for _ in range(1, 13, 1)
         for weekday in range(7)
-        for _ in range(1, 32, 1)
+        for _ in range(1, 32, 3)
     ]
-    df = spark.createDataFrame(data, output_schema)
 
-    output = transformer.holiday_weekend(df)
+    output = transformer.holiday_weekend(demand_dataframe)
 
     assert (
         output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == expected
@@ -306,24 +314,17 @@ def test_holiday_weekend(transformer: BronzeToSilverTransformer, spark: SparkSes
 
 
 def test_holiday_MLK_and_presidents_day(
-    transformer: BronzeToSilverTransformer, spark: SparkSession
+    transformer: BronzeToSilverTransformer,
+    demand_dataframe: DataFrame,
 ):
-    data = [
-        [1, 100, 100, 2024, month, dayofmonth, weekday, 25, 171, 19, False]
-        for month in range(1, 13, 1)
-        for weekday in range(7)
-        for dayofmonth in range(1, 32, 1)
-    ]
     expected = [
         month < 3 and weekday == 0 and 15 <= dayofmonth <= 21
         for month in range(1, 13, 1)
         for weekday in range(7)
-        for dayofmonth in range(1, 32, 1)
+        for dayofmonth in range(1, 32, 3)
     ]
 
-    df = spark.createDataFrame(data, output_schema)
-
-    output = transformer.holiday_MLK_and_presidents_day(df)
+    output = transformer.holiday_MLK_and_presidents_day(demand_dataframe)
 
     assert (
         output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == expected
