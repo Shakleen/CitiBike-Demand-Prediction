@@ -213,7 +213,7 @@ def test_config():
     assert hasattr(config, "pre_2020_schema")
     assert hasattr(config, "post_2020_csv_dir")
     assert hasattr(config, "post_2020_schema")
-    assert hasattr(config, "raw_data_save_dir")
+    assert hasattr(config, "raw_delta_path")
     assert hasattr(config, "column_order")
 
 
@@ -289,15 +289,3 @@ def test_combine_dataframes(
     df = ingestor.combine_dataframes(dataframe_pre2020, dataframe_post2020)
 
     assert set(df.columns) == expected_columns
-
-
-def test_write_dataframe():
-    spark = Mock(SparkSession)
-    dataframe = Mock(DataFrame)
-
-    ingestor = DataIngestor(spark)
-    ingestor.write_dataframe(dataframe)
-
-    dataframe.write.save.assert_called_once_with(
-        path=ingestor.config.raw_data_save_dir, format="delta", mode="overwrite"
-    )

@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Tuple
 
 from src.logger import logging
+from src.utils import write_delta
 
 
 @dataclass
@@ -66,7 +67,7 @@ class DataIngestorConfig:
         ]
     )
 
-    raw_data_save_dir: str = os.path.join(root_data_path, "delta", "raw")
+    raw_delta_path: str = os.path.join(root_data_path, "delta", "raw")
     column_order = [
         "start_time",
         "end_time",
@@ -101,17 +102,6 @@ class DataIngestor:
             self.config.post_2020_schema,
         )
         return pre_2020_df, post_2020_df
-
-    def write_dataframe(self, df: DataFrame):
-        df.write.save(
-            path=self.config.raw_data_save_dir,
-            format="delta",
-            mode="overwrite",
-        )
-        logging.info(
-            "Finished ingesting csv data. "
-            + f"Saved as delta to {self.config.raw_data_save_dir}"
-        )
 
     def combine_dataframes(self, df_1: DataFrame, df_2: DataFrame) -> DataFrame:
         logging.info("Combining pre-2020 and post-2020 dataframes")
@@ -170,7 +160,7 @@ class DataIngestor:
         post_2020_df = self.standardize_columns_for_post2020(post_2020_df)
 
         df = self.combine_dataframes(pre_2020_df, post_2020_df)
-        self.write_dataframe(df)
+        write_delta(df, self.config.raw_delta_path)
 
 
 if __name__ == "__main__":
