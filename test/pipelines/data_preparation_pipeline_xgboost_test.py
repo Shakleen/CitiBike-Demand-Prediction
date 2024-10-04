@@ -32,9 +32,12 @@ def test_config():
     assert hasattr(config, "root_delta_path")
     assert hasattr(config, "gold_delta_path")
     assert hasattr(config, "data_artifact_path")
+    assert hasattr(config, "pipeline_artifact_path")
     assert hasattr(config, "categorical_column_names")
     assert hasattr(config, "numerical_column_names")
     assert hasattr(config, "cyclic_column_periods")
+    assert hasattr(config, "label_column_names")
+    assert hasattr(config, "cv_folds")
 
 def test_init(pipeline: DataPreparationPipelineXGboost):
     assert hasattr(pipeline, "spark")
