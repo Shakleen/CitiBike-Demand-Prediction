@@ -24,16 +24,16 @@ class BronzeToSilverTransformer:
     def write_delta(self, df: DataFrame, path: str):
         df.write.save(path=path, format="delta", mode="overwrite")
 
-    def create_time_features(self, df: DataFrame, column_name: str) -> DataFrame:
+    def create_time_features(self, df: DataFrame) -> DataFrame:
         return (
-            df.withColumn("year", F.year(column_name))
-            .withColumn("month", F.month(column_name))
-            .withColumn("dayofmonth", F.dayofmonth(column_name))
-            .withColumn("weekday", F.weekday(column_name))
-            .withColumn("weekofyear", F.weekofyear(column_name))
-            .withColumn("dayofyear", F.dayofyear(column_name))
-            .withColumn("hour", F.hour(column_name))
-            .drop(column_name)
+            df.withColumn("year", F.year("time"))
+            .withColumn("month", F.month("time"))
+            .withColumn("dayofmonth", F.dayofmonth("time"))
+            .withColumn("weekday", F.weekday("time"))
+            .withColumn("weekofyear", F.weekofyear("time"))
+            .withColumn("dayofyear", F.dayofyear("time"))
+            .withColumn("hour", F.hour("time"))
+            .drop("time")
         )
 
     def split_start_and_end_time(self, df: DataFrame) -> Tuple[DataFrame, DataFrame]:
@@ -83,3 +83,21 @@ class BronzeToSilverTransformer:
             how="fullouter",
         ).fillna(0)
         return combined_df
+
+    def holiday_weekend(self, df: DataFrame) -> DataFrame:
+        return df.withColumn(
+            "is_holiday",
+            F.when(F.col("weekday") > 4, F.lit(True)).otherwise(F.col("is_holiday")),
+        )
+
+    def holiday_MLK_and_presidents_day(self, df: DataFrame) -> DataFrame:
+        return df.withColumn(
+            "is_holiday",
+            F.when(
+                (F.month(F.col("date")).isin(1, 2))  # January or February
+                & (F.weekday(F.col("date")) == 0)  # Monday
+                & (F.dayofmonth(F.col("date")) >= 15)  # 3rd week
+                & (F.dayofmonth(F.col("date")) <= 21),  # 3rd week
+                F.lit(True),
+            ).otherwise(F.col("is_holiday")),
+        )

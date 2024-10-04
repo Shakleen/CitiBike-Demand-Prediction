@@ -11,6 +11,22 @@ from src.components.bronze_to_silver_transformer import (
     BronzeToSilverTransformer,
 )
 
+output_schema = T.StructType(
+    [
+        T.StructField("station_id", T.IntegerType(), True),
+        T.StructField("bike_demand", T.IntegerType(), True),
+        T.StructField("dock_demand", T.IntegerType(), True),
+        T.StructField("year", T.IntegerType(), True),
+        T.StructField("month", T.IntegerType(), True),
+        T.StructField("dayofmonth", T.IntegerType(), True),
+        T.StructField("weekday", T.IntegerType(), True),
+        T.StructField("weekofyear", T.IntegerType(), True),
+        T.StructField("dayofyear", T.IntegerType(), True),
+        T.StructField("hour", T.IntegerType(), True),
+        T.StructField("is_holiday", T.BooleanType(), True),
+    ]
+)
+
 
 @pytest.fixture(scope="session")
 def spark():
@@ -134,10 +150,10 @@ def test_create_time_features(
 ):
     dataframe = spark.createDataFrame(
         [pd.Timestamp("2024-06-19 19:24:11"), pd.Timestamp("2024-06-19 19:35:37")],
-        schema=T.StructType([T.StructField("start_time", T.TimestampType(), True)]),
+        schema=T.StructType([T.StructField("time", T.TimestampType(), True)]),
     )
 
-    output = transformer.create_time_features(dataframe, "start_time")
+    output = transformer.create_time_features(dataframe)
 
     assert isinstance(output, DataFrame)
     assert set(output.columns) == {
@@ -264,4 +280,34 @@ def test_combine_on_station_id_and_time(
         200,
         0,
         400,
+    ]
+
+
+@pytest.mark.parametrize(
+    ("weekday", "is_holiday"),
+    [
+        (0, False),
+        (1, False),
+        (2, False),
+        (3, False),
+        (4, False),
+        (5, True),
+        (6, True),
+    ],
+)
+def test_holiday_weekend(
+    transformer: BronzeToSilverTransformer,
+    spark: SparkSession,
+    weekday: int,
+    is_holiday: bool,
+):
+    df = spark.createDataFrame(
+        [[1, 100, 100, 2024, 6, 19, weekday, 25, 171, 19, False]],
+        output_schema,
+    )
+
+    output = transformer.holiday_weekend(df)
+
+    assert output.select("is_holiday").toPandas().to_numpy().flatten().tolist() == [
+        is_holiday
     ]
