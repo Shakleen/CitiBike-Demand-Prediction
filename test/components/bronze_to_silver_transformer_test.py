@@ -33,6 +33,55 @@ def transformer(spark: SparkSession):
     return BronzeToSilverTransformer(spark)
 
 
+@pytest.fixture
+def time_dataframe(spark: SparkSession):
+    dataframe = spark.createDataFrame(
+        [
+            [
+                "2024-06-19 19:24:11",
+                "2024-06-19 19:35:37",
+                1,
+            ],
+            [
+                "2024-06-20 17:01:54",
+                "2024-06-20 17:14:34",
+                2,
+            ],
+        ],
+        schema=T.StructType(
+            [
+                T.StructField("start_time", T.StringType(), True),
+                T.StructField("end_time", T.StringType(), True),
+                T.StructField("row_number", T.LongType(), True),
+            ]
+        ),
+    )
+    dataframe = dataframe.withColumn(
+        "start_time", F.to_timestamp("start_time")
+    ).withColumn("end_time", F.to_timestamp("end_time"))
+
+    return dataframe
+
+
+@pytest.fixture
+def mapper_dataframe(spark: SparkSession):
+    dataframe = spark.createDataFrame(
+        [
+            [1, 10, 20],
+            [2, 20, 10],
+        ],
+        schema=T.StructType(
+            [
+                T.StructField("row_number", T.LongType(), True),
+                T.StructField("start_station_id", T.IntegerType(), True),
+                T.StructField("end_station_id", T.IntegerType(), True),
+            ]
+        ),
+    )
+
+    return dataframe
+
+
 def test_config():
     config = BronzeToSilverTransformerConfig()
 
@@ -104,38 +153,29 @@ def test_create_time_features(
 
 def test_split_start_and_end_time(
     transformer: BronzeToSilverTransformer,
-    spark: SparkSession,
+    time_dataframe: DataFrame,
 ):
-    dataframe = spark.createDataFrame(
-        [
-            [
-                "2024-06-19 19:24:11",
-                "2024-06-19 19:35:37",
-                1443109011456,
-            ],
-            [
-                "2024-06-20 17:01:54",
-                "2024-06-20 17:14:34",
-                1443109011457,
-            ],
-        ],
-        schema=T.StructType(
-            [
-                T.StructField("start_time", T.StringType(), True),
-                T.StructField("end_time", T.StringType(), True),
-                T.StructField("row_number", T.LongType(), True),
-            ]
-        ),
-    )
-    dataframe = dataframe.withColumn(
-        "start_time", F.to_timestamp("start_time")
-    ).withColumn("end_time", F.to_timestamp("end_time"))
-
-    start_df, end_df = transformer.split_start_and_end_time(dataframe)
+    start_df, end_df = transformer.split_start_and_end_time(time_dataframe)
 
     assert isinstance(start_df, DataFrame)
-    assert start_df.count() == dataframe.count()
+    assert start_df.count() == time_dataframe.count()
     assert set(start_df.columns) == {"row_number", "start_time"}
     assert isinstance(end_df, DataFrame)
-    assert end_df.count() == dataframe.count()
+    assert end_df.count() == time_dataframe.count()
     assert set(end_df.columns) == {"row_number", "end_time"}
+
+
+def test_attach_station_ids(
+    transformer: BronzeToSilverTransformer,
+    time_dataframe: DataFrame,
+    mapper_dataframe: DataFrame,
+):
+    start_df, end_df = transformer.split_start_and_end_time(time_dataframe)
+    start_df, end_df = transformer.attach_station_ids(start_df, end_df, mapper_dataframe)
+
+    assert isinstance(start_df, DataFrame)
+    assert start_df.count() == time_dataframe.count()
+    assert set(start_df.columns) == {"row_number", "start_time", "start_station_id"}
+    assert isinstance(end_df, DataFrame)
+    assert end_df.count() == time_dataframe.count()
+    assert set(end_df.columns) == {"row_number", "end_time", "end_station_id"}

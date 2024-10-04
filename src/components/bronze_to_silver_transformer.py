@@ -40,3 +40,21 @@ class BronzeToSilverTransformer:
         start_df = df.select("row_number", "start_time")
         end_df = df.select("row_number", "end_time")
         return (start_df, end_df)
+
+    def attach_station_ids(
+        self,
+        start_df: DataFrame,
+        end_df: DataFrame,
+        mapper_df: DataFrame,
+    ) -> Tuple[DataFrame, DataFrame]:
+        start_df = start_df.join(
+            mapper_df.select("row_number", "start_station_id"),
+            on="row_number",
+            how="inner",
+        )
+        end_df = end_df.join(
+            mapper_df.select("row_number", "end_station_id"),
+            on="row_number",
+            how="inner",
+        )
+        return (start_df, end_df)
