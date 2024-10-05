@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from pyspark.sql import SparkSession
+from xgboost.spark import SparkXGBRegressor
 
 from src.train_pipeline.xgboost_pipeline import XGBoostPipelineConfig, XGBoostPipeline
 
@@ -67,3 +68,12 @@ def test_get_evaluator(pipeline: XGBoostPipeline, predict_col: str, label_col: s
     assert evaluator.getPredictionCol() == predict_col
     assert evaluator.getLabelCol() == label_col
     assert evaluator.getMetricName() == pipeline.config.evaluation_metric_name
+
+
+def test_get_hyperparameter_grid(pipeline: XGBoostPipeline):
+    xgb = pipeline.get_xgboost_regressor(pipeline.config.bike_demand_column_name)
+    grid = pipeline.get_hyperparameter_grid(xgb)
+
+    assert len(grid) == len(pipeline.config.search_learning_rates) * len(
+        pipeline.config.search_n_estimators
+    ) * len(pipeline.config.search_max_depths)

@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from pyspark.sql import SparkSession
 from xgboost.spark import SparkXGBRegressor
 from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.tuning import ParamGridBuilder
+from typing import List
 
 from src.utils import read_delta
 
@@ -20,6 +22,9 @@ class XGBoostPipelineConfig:
     bike_demand_prediction_column_name: str = "predicted_bike_demand"
     dock_demand_prediction_column_name: str = "predicted_dock_demand"
     evaluation_metric_name: str = "rmse"
+    search_n_estimators = [100, 200, 300]
+    search_max_depths = [3, 6, 9]
+    search_learning_rates =  [0.01, 0.1, 0.2, 0.3]
 
 
 class XGBoostPipeline:
@@ -45,6 +50,15 @@ class XGBoostPipeline:
             predictionCol=predicted_column_name,
             labelCol=label_column_name,
             metricName=self.config.evaluation_metric_name,
+        )
+
+    def get_hyperparameter_grid(self, xgb: SparkXGBRegressor) -> List:
+        return (
+            ParamGridBuilder()
+            .addGrid(xgb.n_estimators, self.config.search_n_estimators)
+            .addGrid(xgb.max_depth, self.config.search_max_depths)
+            .addGrid(xgb.learning_rate, self.config.search_learning_rates)
+            .build()
         )
 
     def train(self):
