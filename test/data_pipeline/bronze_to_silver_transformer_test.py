@@ -6,7 +6,7 @@ import pyspark.sql.types as T
 import pyspark.sql.functions as F
 import pandas as pd
 
-from src.components.bronze_to_silver_transformer import (
+from src.date_pipeline.bronze_to_silver_transformer import (
     BronzeToSilverTransformerConfig,
     BronzeToSilverTransformer,
 )

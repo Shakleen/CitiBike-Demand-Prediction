@@ -10,7 +10,7 @@ from pyspark.ml.feature import (
 )
 
 from src.utils import read_delta, write_delta
-from src.components.abstract_transformer import AbstractTransformer
+from src.date_pipeline.abstract_transformer import AbstractTransformer
 
 
 @dataclass

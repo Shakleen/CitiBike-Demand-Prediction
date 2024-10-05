@@ -6,7 +6,7 @@ import pyspark.sql.types as T
 import pyspark.sql.functions as F
 from pyspark.ml import Pipeline
 
-from src.components.silver_to_gold_transformer import (
+from src.date_pipeline.silver_to_gold_transformer import (
     SilverToGoldTransformerConfig,
     SilverToGoldTransformer,
 )

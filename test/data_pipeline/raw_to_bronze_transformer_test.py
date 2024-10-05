@@ -13,7 +13,7 @@ from pyspark.sql.types import (
 from pyspark.sql.functions import col
 from pyspark.sql.dataframe import DataFrame
 
-from src.components.raw_to_bronze_transformer import (
+from src.date_pipeline.raw_to_bronze_transformer import (
     RawToBronzeTransformerConfig,
     RawToBronzeTransformer,
 )

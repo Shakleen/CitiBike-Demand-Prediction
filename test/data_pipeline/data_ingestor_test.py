@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
 
-from src.components.data_ingestor import DataIngestor, DataIngestorConfig
+from src.date_pipeline.data_ingestor import DataIngestor, DataIngestorConfig
 
 
 @pytest.fixture(scope="session")
