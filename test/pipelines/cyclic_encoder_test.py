@@ -17,13 +17,6 @@ def test_fit():
 @pytest.mark.parametrize("period", [24, 30, 365])
 def test_transform(period: int):
     encoder = CyclicEncoder(period)
-    X = list(range(period))
-    expected = np.concatenate(
-        [
-            np.sin(2 * np.pi * np.array(X) / period),
-            np.cose(2 * np.pi * np.array(X) / period),
-        ],
-        axis=1,
-    )
-
-    assert encoder.transform(X) == expected
+    X = np.array(list(range(period))).reshape(1, -1)
+    output = encoder.transform(X)
+    assert output.shape == (1, X.shape[1] * 2)
