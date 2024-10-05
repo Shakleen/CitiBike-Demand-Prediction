@@ -4,6 +4,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
 import pyspark.sql.types as T
 import pyspark.sql.functions as F
+from pyspark.ml import Pipeline
 
 from src.components.silver_to_gold_transformer import (
     SilverToGoldTransformerConfig,
@@ -134,6 +135,10 @@ def test_config():
     assert hasattr(config, "root_delta_path")
     assert hasattr(config, "silver_delta_path")
     assert hasattr(config, "gold_delta_path")
+    assert hasattr(config, "pipeline_artifact_path")
+    assert hasattr(config, "numerical_columns")
+    assert hasattr(config, "categorical_columns")
+    assert hasattr(config, "label_columns")
 
 
 def test_init(transformer: SilverToGoldTransformer, spark: SparkSession):
@@ -159,4 +164,18 @@ def test_cyclic_encode(transformer: SilverToGoldTransformer, dataframe: DataFram
 
     assert len(set(output.columns).intersection(expected)) == len(expected)
 
-    assert len(set(output.columns).intersection({"dayofmonth", "weekofyear", "dayofyear", "hour"})) == 0
+    assert (
+        len(
+            set(output.columns).intersection(
+                {"dayofmonth", "weekofyear", "dayofyear", "hour"}
+            )
+        )
+        == 0
+    )
+
+
+def test_get_pipeline(transformer: SilverToGoldTransformer):
+    pipeline = transformer.get_pipeline()
+
+    assert isinstance(pipeline, Pipeline)
+    assert len(pipeline.getStages()) == 5
