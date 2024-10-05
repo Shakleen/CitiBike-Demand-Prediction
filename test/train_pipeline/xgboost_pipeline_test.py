@@ -20,6 +20,7 @@ def spark():
     yield spark
     spark.stop()
 
+
 @pytest.fixture
 def pipeline(spark: SparkSession) -> XGBoostPipeline:
     return XGBoostPipeline(spark)
@@ -31,8 +32,19 @@ def test_config():
     assert hasattr(config, "root_delta_path")
     assert hasattr(config, "gold_delta_path")
     assert hasattr(config, "model_artifact_path")
+    assert hasattr(config, "feature_column_name")
+    assert hasattr(config, "number_of_workers")
+    assert hasattr(config, "device")
 
 
 def test_init(pipeline: XGBoostPipeline):
     assert hasattr(pipeline, "spark")
     assert hasattr(pipeline, "config")
+
+
+@pytest.mark.parametrize("label", ["bike_demand", "dock_demand"])
+def test_get_xgboost_regressor(pipeline: XGBoostPipeline, label: str):
+    regressor = pipeline.get_xgboost_regressor(label)
+
+    assert regressor.getLabelCol() == label
+    assert regressor.getFeaturesCol() == pipeline.config.feature_column_name
