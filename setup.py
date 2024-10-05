@@ -25,7 +25,7 @@ def get_requirements(file_name: str) -> List[str]:
 
 setup(
     name="CitiBike Demand Prediction",
-    version="0.2.0",
+    version="0.3.0",
     description="An End-to-End Machine Learning project where I predict demand of bikes at citibike stations at hourly level.",
     author="Shakleen Ishfar",
     author_email="shakleenishfar@gmail.com",

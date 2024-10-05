@@ -50,7 +50,7 @@ Gold data is used to train machine learning models for predictive task.
 
 ## Technologies Used
 1. **PySpark** and **DeltaLake** to manage data ingestion and transformation
-1. **MLFlow** for model development
+1. **MLLib** and **MLFlow** for model development, tracking, and evluation
 1. **Flask** to create front end
 1. **GitHub Actions** for CI/CD
 1. **PyTest** for writing tests
