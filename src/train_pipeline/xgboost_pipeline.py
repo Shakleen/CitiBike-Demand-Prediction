@@ -1,3 +1,5 @@
+import mlflow
+import mlflow.spark
 import os
 from dataclasses import dataclass
 from xgboost.spark import SparkXGBRegressor
@@ -47,17 +49,6 @@ class XGBoostPipeline:
             objective="reg:squarederror",
         )
 
-    def get_evaluator(
-        self,
-        label_column_name: str,
-        predicted_column_name: str,
-    ) -> RegressionEvaluator:
-        return RegressionEvaluator(
-            predictionCol=predicted_column_name,
-            labelCol=label_column_name,
-            metricName=self.config.evaluation_metric_name,
-        )
-
     def get_hyperparameter_grid(self, xgb: SparkXGBRegressor) -> List:
         return (
             ParamGridBuilder()
@@ -68,16 +59,44 @@ class XGBoostPipeline:
         )
 
     def get_best_model(self, data: DataFrame, label_col: str, pred_col: str):
+        evaluator_rmse = RegressionEvaluator(
+            predictionCol=pred_col,
+            labelCol=label_col,
+            metricName="rmse",
+        )
+        evaluator_r2 = RegressionEvaluator(
+            predictionCol=pred_col,
+            labelCol=label_col,
+            metricName="r2",
+        )
         estimator = self.get_xgboost_regressor(label_col)
         cv = CrossValidator(
             estimator=estimator,
             estimatorParamMaps=self.get_hyperparameter_grid(estimator),
-            evaluator=self.get_evaluator(label_col, pred_col),
+            evaluator=evaluator_rmse,
             numFolds=self.config.cv_folds,
             seed=self.config.seed,
         )
-        cv_model = cv.fit(data)
-        return cv_model.bestModel
+
+        with mlflow.start_run():
+            cv_model = cv.fit(data)
+
+            for i, metrics in enumerate(cv_model.avgMetrics):
+                mlflow.log_metric(
+                    f"fold_{i+1}_{self.config.evaluation_metric_name}",
+                    metrics,
+                )
+
+            best_model = cv_model.bestModel
+            predictions = best_model.transform(data)
+
+            overall_rmse = evaluator_rmse.evaluate(predictions)
+            overall_r2 = evaluator_r2.evaluate(predictions)
+
+            mlflow.log_metric("overall_rmse", overall_rmse)
+            mlflow.log_metric("overall_r2", overall_r2)
+
+        return best_model
 
     def train(self):
         data = read_delta(self.spark, self.config.gold_delta_path)
@@ -87,13 +106,34 @@ class XGBoostPipeline:
             self.config.bike_demand_column_name,
             self.config.bike_demand_prediction_column_name,
         )
-        bike_demand_model.write().overwrite().save(self.config.bike_model_artifact_path)
+        mlflow.spark.log_model(bike_demand_model, self.config.bike_model_artifact_path)
 
         dock_demand_model = self.get_best_model(
             data,
             self.config.dock_demand_column_name,
             self.config.dock_demand_prediction_column_name,
         )
-        dock_demand_model.write().overwrite().save(self.config.dock_model_artifact_path)
+        mlflow.spark.log_model(dock_demand_model, self.config.dock_model_artifact_path)
 
         write_delta(data, self.config.prediction_delta_path)
+
+
+if __name__ == "__main__":
+    import pyspark
+    from delta import configure_spark_with_delta_pip
+
+    builder = (
+        pyspark.sql.SparkSession.builder.appName("raw_to_bronze")
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        )
+        .config("spark.driver.memory", "15g")
+        .config("spark.sql.shuffle.partitions", "6")
+        .config("spark.sql.legacy.timeParserPolicy", "LEGACY")
+    )
+    spark = configure_spark_with_delta_pip(builder).getOrCreate()
+
+    pipeline = XGBoostPipeline(spark)
+    pipeline.train()

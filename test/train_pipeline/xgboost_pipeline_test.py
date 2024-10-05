@@ -65,21 +65,6 @@ def test_get_xgboost_regressor(pipeline: XGBoostPipeline, label: str):
     assert regressor.getFeaturesCol() == pipeline.config.feature_column_name
 
 
-@pytest.mark.parametrize(
-    ("predict_col", "label_col"),
-    [
-        ("bike_demand", "predicted_bike_demand"),
-        ("dock_demand", "predicted_dock_demand"),
-    ],
-)
-def test_get_evaluator(pipeline: XGBoostPipeline, predict_col: str, label_col: str):
-    evaluator = pipeline.get_evaluator(label_col, predict_col)
-
-    assert evaluator.getPredictionCol() == predict_col
-    assert evaluator.getLabelCol() == label_col
-    assert evaluator.getMetricName() == pipeline.config.evaluation_metric_name
-
-
 def test_get_hyperparameter_grid(pipeline: XGBoostPipeline):
     xgb = pipeline.get_xgboost_regressor(pipeline.config.bike_demand_column_name)
     grid = pipeline.get_hyperparameter_grid(xgb)
@@ -99,6 +84,7 @@ def test_get_hyperparameter_grid(pipeline: XGBoostPipeline):
 def test_get_best_model(pipeline: XGBoostPipeline, predict_col: str, label_col: str):
     mock_df = Mock(DataFrame)
 
-    with (patch("src.train_pipeline.xgboost_pipeline.CrossValidator.fit") as patched_fit):
+    with (patch("src.train_pipeline.xgboost_pipeline.CrossValidator.fit") as patched_fit,
+          patch("src.train_pipeline.xgboost_pipeline.RegressionEvaluator.evaluate") as patched_eval):
         model = pipeline.get_best_model(mock_df, predict_col, label_col)
         patched_fit.assert_called_once_with(mock_df)
