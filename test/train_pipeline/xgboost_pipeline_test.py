@@ -33,7 +33,10 @@ def test_config():
 
     assert hasattr(config, "root_delta_path")
     assert hasattr(config, "gold_delta_path")
-    assert hasattr(config, "model_artifact_path")
+    assert hasattr(config, "prediction_delta_path")
+    assert hasattr(config, "root_model_artifact_path")
+    assert hasattr(config, "bike_model_artifact_path")
+    assert hasattr(config, "dock_model_artifact_path")
     assert hasattr(config, "feature_column_name")
     assert hasattr(config, "number_of_workers")
     assert hasattr(config, "device")
@@ -41,6 +44,12 @@ def test_config():
     assert hasattr(config, "dock_demand_column_name")
     assert hasattr(config, "bike_demand_prediction_column_name")
     assert hasattr(config, "dock_demand_prediction_column_name")
+    assert hasattr(config, "evaluation_metric_name")
+    assert hasattr(config, "search_n_estimators")
+    assert hasattr(config, "search_max_depths")
+    assert hasattr(config, "search_learning_rates")
+    assert hasattr(config, "cv_folds")
+    assert hasattr(config, "seed")
 
 
 def test_init(pipeline: XGBoostPipeline):

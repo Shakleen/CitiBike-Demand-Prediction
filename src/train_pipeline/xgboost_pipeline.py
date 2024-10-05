@@ -7,14 +7,17 @@ from pyspark.ml.tuning import ParamGridBuilder, CrossValidator
 from pyspark.sql.dataframe import DataFrame
 from typing import List
 
-from src.utils import read_delta
+from src.utils import read_delta, write_delta
 
 
 @dataclass
 class XGBoostPipelineConfig:
     root_delta_path: str = os.path.join("Data", "delta")
     gold_delta_path: str = os.path.join(root_delta_path, "gold")
-    model_artifact_path: str = os.path.join("artifacts", "model", "xgboost")
+    prediction_delta_path: str = os.path.join(root_delta_path, "xgboost_prediction")
+    root_model_artifact_path: str = os.path.join("artifacts", "model", "xgboost")
+    bike_model_artifact_path: str = os.path.join(root_model_artifact_path, "bike_model")
+    dock_model_artifact_path: str = os.path.join(root_model_artifact_path, "dock_model")
     feature_column_name: str = "final_features"
     number_of_workers: int = 6
     device: str = "cuda"
@@ -84,9 +87,13 @@ class XGBoostPipeline:
             self.config.bike_demand_column_name,
             self.config.bike_demand_prediction_column_name,
         )
-        
+        bike_demand_model.write().overwrite().save(self.config.bike_model_artifact_path)
+
         dock_demand_model = self.get_best_model(
             data,
             self.config.dock_demand_column_name,
             self.config.dock_demand_prediction_column_name,
         )
+        dock_demand_model.write().overwrite().save(self.config.dock_model_artifact_path)
+
+        write_delta(data, self.config.prediction_delta_path)
