@@ -108,3 +108,24 @@ class SilverToGoldTransformer:
             "final_features", "bike_demand", "dock_demand"
         )
         write_delta(processed_df, self.config.gold_delta_path)
+
+
+if __name__ == "__main__":
+    import pyspark
+    from delta import configure_spark_with_delta_pip
+
+    builder = (
+        pyspark.sql.SparkSession.builder.appName("raw_to_bronze")
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        )
+        .config("spark.driver.memory", "15g")
+        .config("spark.sql.shuffle.partitions", "6")
+        .config("spark.sql.legacy.timeParserPolicy", "LEGACY")
+    )
+
+    spark = configure_spark_with_delta_pip(builder).getOrCreate()
+    transformer = SilverToGoldTransformer(spark)
+    transformer.transform()
