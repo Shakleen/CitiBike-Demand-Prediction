@@ -10,6 +10,7 @@ from pyspark.ml.feature import (
 )
 
 from src.utils import read_delta, write_delta
+from src.components.abstract_transformer import AbstractTransformer
 
 
 @dataclass
@@ -37,10 +38,9 @@ class SilverToGoldTransformerConfig:
     label_columns = ["bike_demand", "dock_deman"]
 
 
-class SilverToGoldTransformer:
+class SilverToGoldTransformer(AbstractTransformer):
     def __init__(self, spark: SparkSession):
-        self.spark = spark
-        self.config = SilverToGoldTransformerConfig()
+        super().__init__(spark, SilverToGoldTransformerConfig())
 
     def cyclic_encode(self, df):
         return (

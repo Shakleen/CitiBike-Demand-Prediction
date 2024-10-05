@@ -14,6 +14,7 @@ from pyspark.sql.functions import (
 )
 from typing import Tuple
 from src.utils import read_delta, write_delta
+from src.components.abstract_transformer import AbstractTransformer
 
 if __name__ == "__main__":
     from src.logger import logging
@@ -27,10 +28,9 @@ class RawToBronzeTransformerConfig:
     station_delta_path: str = os.path.join(root_delta_path, "station")
 
 
-class RawToBronzeTransformer:
+class RawToBronzeTransformer(AbstractTransformer):
     def __init__(self, spark: SparkSession):
-        self.config = RawToBronzeTransformerConfig()
-        self.spark = spark
+        super().__init__(spark, RawToBronzeTransformerConfig())
 
     def create_file_name_column(self, df: DataFrame) -> DataFrame:
         regex_str = "[^\\/]+$"

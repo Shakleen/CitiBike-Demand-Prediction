@@ -6,6 +6,7 @@ import pyspark.sql.functions as F
 from typing import Tuple
 
 from src.utils import read_delta, write_delta
+from src.components.abstract_transformer import AbstractTransformer
 
 
 @dataclass
@@ -16,10 +17,9 @@ class BronzeToSilverTransformerConfig:
     silver_delta_path: str = os.path.join(root_delta_path, "silver")
 
 
-class BronzeToSilverTransformer:
+class BronzeToSilverTransformer(AbstractTransformer):
     def __init__(self, spark: SparkSession) -> None:
-        self.spark = spark
-        self.config = BronzeToSilverTransformerConfig()
+        super().__init__(spark, BronzeToSilverTransformerConfig())
 
     def create_time_features(self, df: DataFrame) -> DataFrame:
         return (
