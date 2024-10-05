@@ -1,9 +1,10 @@
 import os
 from dataclasses import dataclass
-from pyspark.sql import SparkSession
 from xgboost.spark import SparkXGBRegressor
+from pyspark.sql import SparkSession
 from pyspark.ml.evaluation import RegressionEvaluator
-from pyspark.ml.tuning import ParamGridBuilder
+from pyspark.ml.tuning import ParamGridBuilder, CrossValidator
+from pyspark.sql.dataframe import DataFrame
 from typing import List
 
 from src.utils import read_delta
@@ -24,7 +25,9 @@ class XGBoostPipelineConfig:
     evaluation_metric_name: str = "rmse"
     search_n_estimators = [100, 200, 300]
     search_max_depths = [3, 6, 9]
-    search_learning_rates =  [0.01, 0.1, 0.2, 0.3]
+    search_learning_rates = [0.01, 0.1, 0.2, 0.3]
+    cv_folds: int = 10
+    seed: int = 29
 
 
 class XGBoostPipeline:
@@ -61,12 +64,29 @@ class XGBoostPipeline:
             .build()
         )
 
+    def get_best_model(self, data: DataFrame, label_col: str, pred_col: str):
+        estimator = self.get_xgboost_regressor(label_col)
+        cv = CrossValidator(
+            estimator=estimator,
+            estimatorParamMaps=self.get_hyperparameter_grid(estimator),
+            evaluator=self.get_evaluator(label_col, pred_col),
+            numFolds=self.config.cv_folds,
+            seed=self.config.seed,
+        )
+        cv_model = cv.fit(data)
+        return cv_model.bestModel
+
     def train(self):
         data = read_delta(self.spark, self.config.gold_delta_path)
 
-        regressor_bike_demand = self.get_xgboost_regressor(
-            self.config.bike_demand_column_name
+        bike_demand_model = self.get_best_model(
+            data,
+            self.config.bike_demand_column_name,
+            self.config.bike_demand_prediction_column_name,
         )
-        regressor_dock_demand = self.get_xgboost_regressor(
-            self.config.dock_demand_column_name
+        
+        dock_demand_model = self.get_best_model(
+            data,
+            self.config.dock_demand_column_name,
+            self.config.dock_demand_prediction_column_name,
         )

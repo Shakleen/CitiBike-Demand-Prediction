@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import Mock, patch
 from pyspark.sql import SparkSession
 from xgboost.spark import SparkXGBRegressor
+from pyspark.sql.dataframe import DataFrame
 
 from src.train_pipeline.xgboost_pipeline import XGBoostPipelineConfig, XGBoostPipeline
 
@@ -77,3 +78,18 @@ def test_get_hyperparameter_grid(pipeline: XGBoostPipeline):
     assert len(grid) == len(pipeline.config.search_learning_rates) * len(
         pipeline.config.search_n_estimators
     ) * len(pipeline.config.search_max_depths)
+
+
+@pytest.mark.parametrize(
+    ("predict_col", "label_col"),
+    [
+        ("bike_demand", "predicted_bike_demand"),
+        ("dock_demand", "predicted_dock_demand"),
+    ],
+)
+def test_get_best_model(pipeline: XGBoostPipeline, predict_col: str, label_col: str):
+    mock_df = Mock(DataFrame)
+
+    with (patch("src.train_pipeline.xgboost_pipeline.CrossValidator.fit") as patched_fit):
+        model = pipeline.get_best_model(mock_df, predict_col, label_col)
+        patched_fit.assert_called_once_with(mock_df)
