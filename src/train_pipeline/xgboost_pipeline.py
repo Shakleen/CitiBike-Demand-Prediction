@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 from xgboost.spark import SparkXGBRegressor
 from pyspark.sql import SparkSession
+from pyspark.ml.regression import GBTRegressor
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.tuning import ParamGridBuilder, CrossValidator
 from pyspark.sql.dataframe import DataFrame
@@ -21,7 +22,7 @@ class XGBoostPipelineConfig:
     bike_model_artifact_path: str = os.path.join(root_model_artifact_path, "bike_model")
     dock_model_artifact_path: str = os.path.join(root_model_artifact_path, "dock_model")
     feature_column_name: str = "final_features"
-    number_of_workers: int = 6
+    number_of_workers: int = 1
     device: str = "cuda"
     bike_demand_column_name: str = "bike_demand"
     dock_demand_column_name: str = "dock_demand"
@@ -41,20 +42,25 @@ class XGBoostPipeline:
         self.config = XGBoostPipelineConfig()
 
     def get_xgboost_regressor(self, label_column_name: str) -> SparkXGBRegressor:
-        return SparkXGBRegressor(
-            features_col=self.config.feature_column_name,
-            label_col=label_column_name,
-            num_workers=self.config.number_of_workers,
-            device=self.config.device,
-            objective="reg:squarederror",
+        # return SparkXGBRegressor(
+        #     features_col=self.config.feature_column_name,
+        #     label_col=label_column_name,
+        #     num_workers=self.config.number_of_workers,
+        #     device=self.config.device,
+        #     objective="reg:squarederror",
+        # )
+        return GBTRegressor(
+            featuresCol=self.config.feature_column_name,
+            labelCol=label_column_name,
+            seed=self.config.seed,
         )
 
     def get_hyperparameter_grid(self, xgb: SparkXGBRegressor) -> List:
         return (
             ParamGridBuilder()
-            .addGrid(xgb.n_estimators, self.config.search_n_estimators)
-            .addGrid(xgb.max_depth, self.config.search_max_depths)
-            .addGrid(xgb.learning_rate, self.config.search_learning_rates)
+            # .addGrid(xgb.n_estimators, self.config.search_n_estimators)
+            .addGrid(xgb.maxDepth, self.config.search_max_depths)
+            # .addGrid(xgb.learning_rate, self.config.search_learning_rates)
             .build()
         )
 
@@ -123,7 +129,8 @@ if __name__ == "__main__":
     from delta import configure_spark_with_delta_pip
 
     builder = (
-        pyspark.sql.SparkSession.builder.appName("raw_to_bronze")
+        pyspark.sql.SparkSession.builder.master("local[1]")
+        .appName("raw_to_bronze")
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
             "spark.sql.catalog.spark_catalog",
@@ -131,7 +138,7 @@ if __name__ == "__main__":
         )
         .config("spark.driver.memory", "15g")
         .config("spark.sql.shuffle.partitions", "6")
-        .config("spark.sql.legacy.timeParserPolicy", "LEGACY")
+        .config("spark.executor.instances", "1")
     )
     spark = configure_spark_with_delta_pip(builder).getOrCreate()
 
