@@ -32,10 +32,10 @@ class RandomForestPipelineConfig:
     dock_demand_prediction_column_name: str = "predicted_dock_demand"
     evaluation_metric_name: str = "rmse"
     seed: int = 29
-    subsampling_rate: float = 0.02
+    subsampling_rate: float = 0.01
     train_val_test_split_ratio = [0.9, 0.05, 0.05]
-    max_depth: int = 10
-    num_trees: int = 100
+    max_depth: int = 25
+    num_trees: int = 250
 
 
 class RandomForestPipeline:
@@ -124,7 +124,6 @@ class RandomForestPipeline:
 
     def train(self):
         data = read_delta(self.spark, self.config.gold_delta_path)
-        data = data.limit(int(1e4))
 
         train_data, val_data, test_data = pipeline.split_train_val_test(data)
 
