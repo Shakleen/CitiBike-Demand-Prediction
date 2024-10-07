@@ -51,10 +51,11 @@
                 <form class="d-flex">
                     <!-- Dropdown -->
                     <select class="form-select me-2" aria-label="Default select example">
-                        <option selected>Select an option</option>
-                        <option value="1">Option 1</option>
-                        <option value="2">Option 2</option>
-                        <option value="3">Option 3</option>
+                        <option selected>Select a station</option>
+                        <!-- Jinja2 loop to populate options -->
+                        {% for option in options %}
+                        <option value="{{ option }}">{{ option }}</option>
+                        {% endfor %}
                     </select>
 
                     <!-- Date picker -->
