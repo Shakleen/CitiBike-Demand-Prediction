@@ -48,9 +48,9 @@
         <nav class="navbar navbar-dark bg-primary">
             <div class="container-fluid d-flex justify-content-between">
                 <span class="navbar-brand mb-0 h1">CitiBike Bike and Dock Demand Prediction</span>
-                <form class="d-flex">
+                <form class="d-flex" action="/check" method="POST">
                     <!-- Dropdown -->
-                    <select class="form-select me-2" aria-label="Default select example">
+                    <select class="form-select me-2" name="dropdown_option" aria-label="Default select example">
                         <option selected>Select a station</option>
                         <!-- Jinja2 loop to populate options -->
                         {% for option in options %}
@@ -59,16 +59,18 @@
                     </select>
 
                     <!-- Date picker -->
-                    <input type="date" class="form-control me-2">
+                    <input type="date" class="form-control me-2" name="date">
 
                     <!-- Time picker -->
-                    <input type="time" class="form-control me-2">
+                    <input type="time" class="form-control me-2" name="time">
 
                     <!-- Checkbox for Holiday -->
                     <div class="form-check align-self-center">
-                        <input class="form-check-input" type="checkbox" value="" id="holidayCheck">
+                        <input class="form-check-input" type="checkbox" name="holiday" value="yes" id="holidayCheck">
                         <label class="form-check-label" for="holidayCheck">Holiday</label>
                     </div>
+
+                    <button type="submit" class="btn btn-primary ms-2">Check!</button>
                 </form>
             </div>
         </nav>
@@ -82,7 +84,7 @@
                         <div class="card-body">
                             <h5 class="card-title">Bike Demand</h5>
                             <h6 class="card-subtitle mb-2 text-muted">Number of Bikes that will leave from here.</h6>
-                            <p class="display-1 mb-0">0</p>
+                            <p class="display-1 mb-0">{{ bike_demand }}</p>
                         </div>
                     </div>
                 </div>
@@ -93,7 +95,7 @@
                         <div class="card-body">
                             <h5 class="card-title">Dock Demand</h5>
                             <h6 class="card-subtitle mb-2 text-muted">Number of Bikes that will come to park here.</h6>
-                            <p class="display-1 mb-0">0</p>
+                            <p class="display-1 mb-0">{{ dock_demand }}</p>
                         </div>
                     </div>
                 </div>
