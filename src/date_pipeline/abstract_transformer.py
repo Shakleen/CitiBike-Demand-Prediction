@@ -2,6 +2,7 @@ import os
 from abc import abstractmethod, ABC
 from pyspark.sql import SparkSession
 
+
 class AbstractTransformer(ABC):
     def __init__(self, spark: SparkSession, config):
         self.spark = spark
