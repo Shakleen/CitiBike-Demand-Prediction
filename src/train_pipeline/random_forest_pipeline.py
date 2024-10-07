@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from pyspark.sql import SparkSession
 from pyspark.ml.regression import RandomForestRegressor, RandomForestRegressionModel
 from pyspark.ml.evaluation import RegressionEvaluator
-from pyspark.ml.tuning import ParamGridBuilder, CrossValidator
 from pyspark.sql.dataframe import DataFrame
 from typing import Tuple
 
@@ -35,7 +34,9 @@ class RandomForestPipelineConfig:
     subsampling_rate: float = 0.01
     train_val_test_split_ratio = [0.9, 0.05, 0.05]
     max_depth: int = 25
-    num_trees: int = 250
+    num_trees: int = 100
+    min_instances_per_node: int = 100
+    max_bins: int = 32
 
 
 class RandomForestPipeline:
@@ -54,6 +55,7 @@ class RandomForestPipeline:
         return (train_data, val_data, test_data)
 
     def get_regressor(self, label_name: str, predict_name: str):
+        
         return RandomForestRegressor(
             featuresCol=self.config.feature_column_name,
             labelCol=label_name,
@@ -62,6 +64,8 @@ class RandomForestPipeline:
             subsamplingRate=self.config.subsampling_rate,
             maxDepth=self.config.max_depth,
             numTrees=self.config.num_trees,
+            minInstancesPerNode=self.config.min_instances_per_node,
+            maxBins=self.config.max_bins,
         )
 
     def eval_model(
