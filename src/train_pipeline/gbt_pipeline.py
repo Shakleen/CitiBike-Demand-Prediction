@@ -1,45 +1,40 @@
-import os
-from dataclasses import dataclass
 from pyspark.sql import SparkSession
-from pyspark.ml.regression import RandomForestRegressor
+from pyspark.ml.regression import GBTRegressor
+from dataclasses import dataclass
+import os
 
-from src.utils import read_delta
-from src.train_pipeline.abstract_pipeline import AbstractPipeline, BaseConfig
+from src.train_pipeline.abstract_pipeline import AbstractPipeline
+from src.train_pipeline.random_forest_pipeline import RandomForestPipelineConfig
 
 
 @dataclass
-class RandomForestPipelineConfig(BaseConfig):
+class GBTPipelineConfig(RandomForestPipelineConfig):
     root_model_artifact_path: str = os.path.join("artifacts", "model", "random_forest")
     bike_model_artifact_path: str = os.path.join(
         root_model_artifact_path,
-        "bike_model_rf",
+        "bike_model_gbt",
     )
     dock_model_artifact_path: str = os.path.join(
         root_model_artifact_path,
-        "dock_model_rf",
+        "dock_model_gbt",
     )
-    subsampling_rate: float = 0.01
-    max_depth: int = 25
-    num_trees: int = 100
-    min_instances_per_node: int = 100
-    max_bins: int = 32
 
 
-class RandomForestPipeline(AbstractPipeline):
+class GBTPipeline(AbstractPipeline):
     def __init__(self, spark: SparkSession) -> None:
-        super().__init__(spark, RandomForestPipelineConfig())
+        super().__init__(spark, GBTPipelineConfig())
 
     def get_regressor(self, label_name: str, predict_name: str):
-        return RandomForestRegressor(
+        return GBTRegressor(
             featuresCol=self.config.feature_column_name,
             labelCol=label_name,
             predictionCol=predict_name,
             seed=self.config.seed,
             subsamplingRate=self.config.subsampling_rate,
             maxDepth=self.config.max_depth,
-            numTrees=self.config.num_trees,
             minInstancesPerNode=self.config.min_instances_per_node,
             maxBins=self.config.max_bins,
+            maxIter=self.config.num_trees,
         )
 
 
@@ -59,6 +54,6 @@ if __name__ == "__main__":
     )
     spark = configure_spark_with_delta_pip(builder).getOrCreate()
 
-    pipeline = RandomForestPipeline(spark)
+    pipeline = GBTPipeline(spark)
     pipeline.train()
     spark.stop()
