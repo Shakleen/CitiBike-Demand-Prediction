@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from pyspark.sql import SparkSession
+from pyspark.sql.dataframe import DataFrame
 import pyspark.sql.functions as F
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import (
@@ -11,6 +12,27 @@ from pyspark.ml.feature import (
 
 from src.utils import read_delta, write_delta
 from src.date_pipeline.abstract_transformer import AbstractTransformer
+
+def cyclic_encode(df: DataFrame) -> DataFrame:
+    return (
+        df.withColumn(
+            "dayofmonth_sin", F.sin((2 * F.pi() * F.col("dayofmonth")) / 31)
+        )
+        .withColumn(
+            "dayofmonth_cos", F.cos((2 * F.pi() * F.col("dayofmonth")) / 31)
+        )
+        .withColumn(
+            "weekofyear_sin", F.sin((2 * F.pi() * F.col("weekofyear")) / 52)
+        )
+        .withColumn(
+            "weekofyear_cos", F.cos((2 * F.pi() * F.col("weekofyear")) / 52)
+        )
+        .withColumn("dayofyear_sin", F.sin((2 * F.pi() * F.col("dayofyear")) / 365))
+        .withColumn("dayofyear_cos", F.cos((2 * F.pi() * F.col("dayofyear")) / 365))
+        .withColumn("hour_sin", F.sin((2 * F.pi() * F.col("hour")) / 24))
+        .withColumn("hour_cos", F.cos((2 * F.pi() * F.col("hour")) / 24))
+        .drop("dayofmonth", "weekofyear", "dayofyear", "hour")
+    )
 
 
 @dataclass
@@ -41,27 +63,6 @@ class SilverToGoldTransformerConfig:
 class SilverToGoldTransformer(AbstractTransformer):
     def __init__(self, spark: SparkSession):
         super().__init__(spark, SilverToGoldTransformerConfig())
-
-    def cyclic_encode(self, df):
-        return (
-            df.withColumn(
-                "dayofmonth_sin", F.sin((2 * F.pi() * F.col("dayofmonth")) / 31)
-            )
-            .withColumn(
-                "dayofmonth_cos", F.cos((2 * F.pi() * F.col("dayofmonth")) / 31)
-            )
-            .withColumn(
-                "weekofyear_sin", F.sin((2 * F.pi() * F.col("weekofyear")) / 52)
-            )
-            .withColumn(
-                "weekofyear_cos", F.cos((2 * F.pi() * F.col("weekofyear")) / 52)
-            )
-            .withColumn("dayofyear_sin", F.sin((2 * F.pi() * F.col("dayofyear")) / 365))
-            .withColumn("dayofyear_cos", F.cos((2 * F.pi() * F.col("dayofyear")) / 365))
-            .withColumn("hour_sin", F.sin((2 * F.pi() * F.col("hour")) / 24))
-            .withColumn("hour_cos", F.cos((2 * F.pi() * F.col("hour")) / 24))
-            .drop("dayofmonth", "weekofyear", "dayofyear", "hour")
-        )
 
     def get_pipeline(self) -> Pipeline:
         numerical_assembler = VectorAssembler(

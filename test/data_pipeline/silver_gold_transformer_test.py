@@ -9,6 +9,7 @@ from pyspark.ml import Pipeline
 from src.date_pipeline.silver_to_gold_transformer import (
     SilverToGoldTransformerConfig,
     SilverToGoldTransformer,
+    cyclic_encode,
 )
 
 
@@ -149,7 +150,7 @@ def test_init(transformer: SilverToGoldTransformer, spark: SparkSession):
     assert isinstance(transformer.spark, SparkSession)
 
 
-def test_cyclic_encode(transformer: SilverToGoldTransformer, dataframe: DataFrame):
+def test_cyclic_encode(dataframe: DataFrame):
     expected = {
         "dayofmonth_sin",
         "dayofmonth_cos",
@@ -160,7 +161,7 @@ def test_cyclic_encode(transformer: SilverToGoldTransformer, dataframe: DataFram
         "hour_sin",
         "hour_cos",
     }
-    output = transformer.cyclic_encode(dataframe)
+    output = cyclic_encode(dataframe)
 
     assert len(set(output.columns).intersection(expected)) == len(expected)
 
