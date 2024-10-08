@@ -30,12 +30,18 @@ def predict(
     )
 
     df = cyclic_encode(df)
-    transformed_df = data_pipeline_model.transform(df).select("final_features")
-    bike_demand = bike_model.predict(transformed_df)
+    transformed_df = data_pipeline_model.transform(df)
+    bike_demand: DataFrame = bike_model.transform(transformed_df)
+    bike_demand = int(
+        bike_demand.select("predicted_bike_demand").toPandas().iloc[0]
+    )
 
     dock_model = RandomForestRegressionModel.load(
         os.path.join(artifact_path, f"dock_model_{postfix}")
     )
-    dock_demand = dock_model.predict(transformed_df)
+    dock_demand = dock_model.transform(transformed_df)
+    dock_demand = int(
+        dock_demand.select("predicted_dock_demand").toPandas().iloc[0]
+    )
 
     return (bike_demand, dock_demand)

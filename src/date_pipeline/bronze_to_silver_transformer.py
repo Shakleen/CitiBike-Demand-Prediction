@@ -9,6 +9,19 @@ from src.utils import read_delta, write_delta
 from src.date_pipeline.abstract_transformer import AbstractTransformer
 
 
+def create_time_features(df: DataFrame) -> DataFrame:
+    return (
+        df.withColumn("year", F.year("time"))
+        .withColumn("month", F.month("time"))
+        .withColumn("dayofmonth", F.dayofmonth("time"))
+        .withColumn("weekday", F.weekday("time"))
+        .withColumn("weekofyear", F.weekofyear("time"))
+        .withColumn("dayofyear", F.dayofyear("time"))
+        .withColumn("hour", F.hour("time"))
+        .drop("time")
+    )
+
+
 @dataclass
 class BronzeToSilverTransformerConfig:
     root_delta_path: str = os.path.join("Data", "delta")
@@ -20,18 +33,6 @@ class BronzeToSilverTransformerConfig:
 class BronzeToSilverTransformer(AbstractTransformer):
     def __init__(self, spark: SparkSession) -> None:
         super().__init__(spark, BronzeToSilverTransformerConfig())
-
-    def create_time_features(self, df: DataFrame) -> DataFrame:
-        return (
-            df.withColumn("year", F.year("time"))
-            .withColumn("month", F.month("time"))
-            .withColumn("dayofmonth", F.dayofmonth("time"))
-            .withColumn("weekday", F.weekday("time"))
-            .withColumn("weekofyear", F.weekofyear("time"))
-            .withColumn("dayofyear", F.dayofyear("time"))
-            .withColumn("hour", F.hour("time"))
-            .drop("time")
-        )
 
     def split_start_and_end(self, df: DataFrame) -> Tuple[DataFrame, DataFrame]:
         start_df = (

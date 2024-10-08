@@ -9,6 +9,7 @@ import pandas as pd
 from src.date_pipeline.bronze_to_silver_transformer import (
     BronzeToSilverTransformerConfig,
     BronzeToSilverTransformer,
+    create_time_features,
 )
 
 output_schema = T.StructType(
@@ -121,7 +122,6 @@ def test_init(transformer: BronzeToSilverTransformer):
 
 
 def test_create_time_features(
-    transformer: BronzeToSilverTransformer,
     spark: SparkSession,
 ):
     dataframe = spark.createDataFrame(
@@ -129,7 +129,7 @@ def test_create_time_features(
         schema=T.StructType([T.StructField("time", T.TimestampType(), True)]),
     )
 
-    output = transformer.create_time_features(dataframe)
+    output = create_time_features(dataframe)
 
     assert isinstance(output, DataFrame)
     assert set(output.columns) == {
