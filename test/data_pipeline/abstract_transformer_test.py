@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock, patch
 from pyspark.sql import SparkSession
 
-from src.date_pipeline.abstract_transformer import AbstractTransformer
+from src.data_pipeline.abstract_transformer import AbstractTransformer
 
 
 def test_init():

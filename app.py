@@ -6,8 +6,8 @@ from delta import configure_spark_with_delta_pip
 import pyspark.sql.functions as F
 
 from src.prediction_pipeline.spark_predict_pipeline import predict
-from src.date_pipeline.bronze_to_silver_transformer import create_time_features
-from src.date_pipeline.silver_to_gold_transformer import cyclic_encode
+from src.data_pipeline.bronze_to_silver_transformer import create_time_features
+from src.data_pipeline.silver_to_gold_transformer import cyclic_encode
 
 builder = (
     pyspark.sql.SparkSession.builder.master("local[1]")

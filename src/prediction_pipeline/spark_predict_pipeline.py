@@ -4,7 +4,7 @@ from typing import Tuple
 from pyspark.ml import PipelineModel
 from pyspark.ml.regression import RandomForestRegressionModel
 
-from src.date_pipeline.silver_to_gold_transformer import cyclic_encode
+from src.data_pipeline.silver_to_gold_transformer import cyclic_encode
 
 model_artifacts = {
     "random_forest": os.path.join("artifacts", "model", "random_forest"),

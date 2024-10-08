@@ -14,7 +14,7 @@ from pyspark.sql.functions import (
 )
 from typing import Tuple
 from src.utils import read_delta, write_delta
-from src.date_pipeline.abstract_transformer import AbstractTransformer
+from src.data_pipeline.abstract_transformer import AbstractTransformer
 
 if __name__ == "__main__":
     from src.logger import logging
