@@ -9,7 +9,7 @@ from src.train_pipeline.random_forest_pipeline import RandomForestPipelineConfig
 
 @dataclass
 class GBTPipelineConfig(RandomForestPipelineConfig):
-    root_model_artifact_path: str = os.path.join("artifacts", "model", "random_forest")
+    root_model_artifact_path: str = os.path.join("artifacts", "model", "gbt")
     bike_model_artifact_path: str = os.path.join(
         root_model_artifact_path,
         "bike_model_gbt",
