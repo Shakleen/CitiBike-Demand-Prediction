@@ -46,59 +46,48 @@
     <div class="square-container">
         <!-- Navbar -->
         <nav class="navbar navbar-dark bg-primary">
-            <div class="container-fluid d-flex justify-content-between">
+            <div class="container-fluid d-flex justify-content-center">
                 <span class="navbar-brand mb-0 h1">CitiBike Bike and Dock Demand Prediction</span>
-                <form class="d-flex" action="/check" method="POST">
-                    <!-- Dropdown -->
-                    <select class="form-select me-2" name="dropdown_option" aria-label="Default select example">
-                        <option selected>Select a station</option>
-                        <!-- Jinja2 loop to populate options -->
-                        {% for option in options %}
-                        <option value="{{ option }}">{{ option }}</option>
-                        {% endfor %}
-                    </select>
-
-                    <!-- Date picker -->
-                    <input type="date" class="form-control me-2" name="date">
-
-                    <!-- Time picker -->
-                    <input type="time" class="form-control me-2" name="time">
-
-                    <!-- Checkbox for Holiday -->
-                    <div class="form-check align-self-center">
-                        <input class="form-check-input" type="checkbox" name="holiday" value="yes" id="holidayCheck">
-                        <label class="form-check-label" for="holidayCheck">Holiday</label>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary ms-2">Check!</button>
-                </form>
             </div>
         </nav>
 
-        <!-- Main Content (Two Cards) -->
-        <div class="main-content">
-            <div class="row w-100">
-                <!-- Card 1: Bike Demand -->
-                <div class="col-md-6">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h5 class="card-title">Bike Demand</h5>
-                            <h6 class="card-subtitle mb-2 text-muted">Number of Bikes that will leave from here.</h6>
-                            <p class="display-1 mb-0">{{ bike_demand }}</p>
-                        </div>
-                    </div>
+        <div class="container mt-4">
+            <form class="d-flex" action="/check" method="POST">
+                <!-- Dropdown -->
+                <select class="form-select me-2" name="dropdown_option" aria-label="Default select example">
+                    <option selected>Select a station</option>
+                    <!-- Jinja2 loop to populate options -->
+                    {% for option in options %}
+                    <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+
+                <!-- Checkbox for Holiday -->
+                <div class="form-check align-self-center">
+                    <input class="form-check-input" type="checkbox" name="holiday" value="yes" id="holidayCheck">
+                    <label class="form-check-label" for="holidayCheck">Holiday</label>
                 </div>
 
-                <!-- Card 2: Dock Demand -->
-                <div class="col-md-6">
+                <button type="submit" class="btn btn-primary ms-2">Check!</button>
+            </form>
+        </div>
+
+        <!-- Main Content (Plotly Plot) -->
+        <div class="main-content">
+            <div class="row w-100">
+                <!-- Display the Plotly plot if available -->
+                {% if plot_html %}
+                <div class="col-12">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h5 class="card-title">Dock Demand</h5>
-                            <h6 class="card-subtitle mb-2 text-muted">Number of Bikes that will come to park here.</h6>
-                            <p class="display-1 mb-0">{{ dock_demand }}</p>
+                            <!-- Embed Plotly plot HTML -->
+                            {{ plot_html|safe }}
                         </div>
                     </div>
                 </div>
+                {% else %}
+                <center><p>No data to display yet.</p></center>
+                {% endif %}
             </div>
         </div>
 

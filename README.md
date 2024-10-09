@@ -11,18 +11,14 @@ This project is a data-driven system designed to predict hourly bike and dock de
 ![MLflow](https://img.shields.io/badge/MLflow-Tracking%20Experiment-blue)
 ![Flask](https://img.shields.io/badge/Flask-Web%20Framework-lightgrey)
 ![PyTest](https://img.shields.io/badge/PyTest-Testing-green)
-<!-- ![Azure](https://img.shields.io/badge/Azure-Cloud_Service-blue)
-![Docker](https://img.shields.io/badge/Docker-Containerization-blue) -->
+
+<center><img src="Diagrams/AppDemo.gif"/></center>
 
 ## Table of Contents
 
 1. [Technologies Used](#technologies-used)
 1. [System Architecture](#system-architecture)
 1. [Data Pipeline](#data-pipeline)
-    1. [Raw Delta Lake](#raw-delta-lake)
-    1. [Bronze Delta Lake](#bronze-delta-lake)
-    1. [Silver Delta Lake](#silver-delta-lake)
-    1. [Gold Delta Lake](#gold-delta-lake)
 1. [Machine Learning Pipeline](#machine-learning-pipeline)
 1. [Web Interface](#web-interface)
 1. [Testing & CI/CD](#testing--cicd)
@@ -80,10 +76,9 @@ The system follows a distributed architecture built using Apache Spark and Delta
 ## Machine Learning Pipeline
 The system's machine learning pipeline is built using Spark MLlib for distributed learning and uses MLflow for tracking data and model versions, as well as key metrics. The following models were tested:
 
-* **Linear Regression** - Baseline model for comparison.
 * **Random Forest** - Decision-tree based ensemble model.
 * **Gradient Boosted Trees** - Advanced ensemble model for better accuracy.
-* **Facebook Prophet** - Time-series forecasting model.
+* **Temporal Graph Neural Networks** - Time-series forecasting model for graph data.
 
 All models are trained on the Gold Delta Lake and evaluated based on their prediction accuracy for hourly bike and dock demand.
 
@@ -113,23 +108,13 @@ pip install .
 ### Usage
 Start the Flask web application
 ```bash
-flask run
+python3 app.py
 ```
 
 Open a web browser and navigate to http://localhost:5000 to access the bike and dock demand prediction system.
 
-## Contributing
-Contributions are welcome! Please fork the repository and submit a pull request.
-
-1. Fork the repository.
-1. Create a new feature branch: git checkout -b feature-branch
-1. Commit your changes: git commit -m "Add feature"
-1. Push to the branch: git push origin feature-branch
-1. Open a pull request.
-
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
-
 
 ## Resources
 1. [Unit testing PySpark code using Pytest](https://engineeringfordatascience.com/posts/pyspark_unit_testing_with_pytest/)
