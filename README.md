@@ -11,6 +11,8 @@ This project is a data-driven system designed to predict hourly bike and dock de
 ![MLflow](https://img.shields.io/badge/MLflow-Tracking%20Experiment-blue)
 ![Flask](https://img.shields.io/badge/Flask-Web%20Framework-lightgrey)
 ![PyTest](https://img.shields.io/badge/PyTest-Testing-green)
+![Azure](https://img.shields.io/badge/Azure-Cloud_Service-blue)
+![Docker](https://img.shields.io/badge/Docker-Containerization-blue)
 
 <center><img src="Diagrams/AppDemo.gif"/></center>
 
@@ -78,7 +80,6 @@ The system's machine learning pipeline is built using Spark MLlib for distribute
 
 * **Random Forest** - Decision-tree based ensemble model.
 * **Gradient Boosted Trees** - Advanced ensemble model for better accuracy.
-* **Temporal Graph Neural Networks** - Time-series forecasting model for graph data.
 
 All models are trained on the Gold Delta Lake and evaluated based on their prediction accuracy for hourly bike and dock demand.
 
